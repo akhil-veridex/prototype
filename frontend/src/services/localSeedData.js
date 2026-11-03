@@ -828,8 +828,9 @@ export const INITIAL_POSTING_RULES = [
     _id: 'rule-01',
     rule_code: 'RULE_INV_ISSUE',
     rule_name: 'Customer Installment Invoice Issuance',
+    event_code: 'billing.invoice.issued',
     event_type: 'billing.invoice.issued',
-    status: 'ACTIVE',
+    status: 'PUBLISHED',
     description: 'Debits Premium Receivable (1100) and credits UPR Liability (2200) + Policy Fee Income (4100).',
     debit_account: '1100',
     credit_account: '2200'
@@ -838,8 +839,9 @@ export const INITIAL_POSTING_RULES = [
     _id: 'rule-02',
     rule_code: 'RULE_PMT_RECEIVED',
     rule_name: 'Customer Premium Cash Receipt Waterfall',
+    event_code: 'billing.payment.received',
     event_type: 'billing.payment.received',
-    status: 'ACTIVE',
+    status: 'PUBLISHED',
     description: 'Texas § 4053 Fiduciary deposit into Trust Bank (1010), clears AR (1100), provisions Carrier Net (2010), Broker Comm (2020), MGA Income (4200).',
     debit_account: '1010',
     credit_account: '1100'
@@ -848,8 +850,9 @@ export const INITIAL_POSTING_RULES = [
     _id: 'rule-03',
     rule_code: 'RULE_COMMISSION_ALLOCATED',
     rule_name: 'Broker & MGA Commission Allocation',
+    event_code: 'commission.split.allocated',
     event_type: 'commission.split.allocated',
-    status: 'ACTIVE',
+    status: 'PUBLISHED',
     description: 'Provisions broker commission payable and recognizes earned managing general agency fee revenue.',
     debit_account: '2200',
     credit_account: '2020'
@@ -858,8 +861,9 @@ export const INITIAL_POSTING_RULES = [
     _id: 'rule-04',
     rule_code: 'RULE_ADJ_APPLIED',
     rule_name: 'Customer AR Adjustment or Fee Waiver',
+    event_code: 'billing.adjustment.applied',
     event_type: 'billing.adjustment.applied',
-    status: 'ACTIVE',
+    status: 'PUBLISHED',
     description: 'Applies credit memo, fee waiver, or bad debt write-off against customer balance.',
     debit_account: '5020',
     credit_account: '1100'

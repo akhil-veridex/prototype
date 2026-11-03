@@ -152,7 +152,7 @@ export const authApi = {
   updateBillingPlan: async (id, payload) => ({ success: true }),
   toggleBillingPlanStatus: async (id) => ({ success: true }),
   deleteBillingPlan: async (id) => ({ success: true }),
-  seedRules: async () => ({ success: true }),
+  seedRules: async () => { await delay(); return localStorageEngine.seedPostingRules(); },
   generateSchedule: async (payload) => ({ success: true, data: localStorageEngine.getInstallmentSchedules().data }),
   getInstallmentSchedules: async () => {
     await delay();
@@ -443,7 +443,7 @@ export const rulesApi = {
   deleteRule: async () => ({ success: true }),
   simulate: async () => ({ success: true, balanced: true }),
   postSimulated: async () => ({ success: true }),
-  seedRules: async () => ({ success: true })
+  seedRules: async () => { await delay(); return localStorageEngine.seedPostingRules(); }
 };
 
 export const ruleTestsApi = {

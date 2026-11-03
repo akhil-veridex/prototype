@@ -41,6 +41,8 @@ const KEYS = {
   BANK_LINES: 'veridex_bank_lines',
   MATCHES: 'veridex_matches',
   COMMISSIONS: 'veridex_commissions',
+  SETTLEMENTS: 'veridex_carrier_settlements',
+  COMMISSION_TRANSACTIONS: 'veridex_commission_transactions',
   SETTINGS: 'veridex_settings'
 };
 
@@ -66,7 +68,7 @@ function setItem(key, value) {
 /**
  * Initialize all datasets into localStorage on application load.
  */
-export const SEED_DATA_VERSION = 'v2.4_20coa_parties_active_data';
+export const SEED_DATA_VERSION = 'v2.7_full_settlements_allocations';
 
 export function initLocalStorage(force = false) {
   const currentVersion = localStorage.getItem('veridex_seed_version');
@@ -400,6 +402,11 @@ export const localStorageEngine = {
   // Counterparties
   getParties: () => ({ success: true, data: getItem(KEYS.COUNTERPARTIES, INITIAL_COUNTERPARTIES) }),
 
+  seedPostingRules: () => {
+    setItem(KEYS.POSTING_RULES, INITIAL_POSTING_RULES);
+    return { success: true, data: INITIAL_POSTING_RULES };
+  },
+
   seedParties: () => {
     setItem(KEYS.COUNTERPARTIES, INITIAL_COUNTERPARTIES);
     return { success: true, data: INITIAL_COUNTERPARTIES };
@@ -453,29 +460,61 @@ export const localStorageEngine = {
   getTransactionSnapshots: () => ({ success: true, data: getItem(KEYS.TRANSACTION_SNAPSHOTS, INITIAL_TRANSACTION_SNAPSHOTS) }),
   getFinanceAgreements: () => ({ success: true, data: getItem(KEYS.FINANCE_AGREEMENTS, INITIAL_FINANCE_AGREEMENTS) }),
 
-  // Issue Invoice Action
-  issueInvoice: ({ installment_id }) => {
+  // Issue Invoice Action (Universal Signature)
+  issueInvoice: (payload = {}) => {
     const schedules = getItem(KEYS.SCHEDULES, INITIAL_SCHEDULES);
-    const invoices = getItem(KEYS.INVOICES, []);
+    const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
     const billingAccounts = getItem(KEYS.BILLING_ACCOUNTS, INITIAL_BILLING_ACCOUNTS);
 
-    const sch = schedules.find(s => s._id === installment_id || s.installment_id === installment_id);
-    if (!sch) throw new Error('Installment schedule not found');
+    const installmentId = payload.installment_id || payload.installment_schedule_id;
+    const installmentNum = Number(payload.installment_number || payload.installment_no || 0);
+    const policyId = payload.policy_id || payload.policy_number;
 
-    const invNumber = `INV-2026-${String(invoices.length + 1).padStart(5, '0')}`;
+    let sch = null;
+    if (installmentId) {
+      sch = schedules.find(s => s._id === installmentId || s.installment_id === installmentId);
+    }
+    if (!sch && installmentNum > 0) {
+      sch = schedules.find(s => Number(s.installment_number || s.installment_no) === installmentNum && (!policyId || s.policy_id === policyId || s.policy_number === policyId));
+    }
+    if (!sch && installmentNum > 0) {
+      sch = schedules.find(s => Number(s.installment_number || s.installment_no) === installmentNum);
+    }
+    if (!sch) {
+      sch = schedules.find(s => s.status === 'SCHEDULED') || schedules[0];
+    }
+
+    const invNumber = `INV-2026-${String(invoices.length + 1).padStart(4, '0')}`;
     const invId = `inv-${Date.now()}`;
     const now = new Date().toISOString();
 
-    const purePremium = Number(sch.premium_amount || sch.premium || 0);
-    const feeAmount = Number(sch.fee_amount || sch.fee || 0);
-    const totalAmount = purePremium + feeAmount;
+    let totalAmount = 0;
+    let purePremium = 0;
+    let feeAmount = 0;
+    let glLines = [];
 
-    // Double-Entry GL Journal first
-    const glLines = [
-      { account_code: '1100', account_name: 'Premium Receivable', debit: totalAmount, credit: 0, memo: `Receivable billed for ${invNumber}` },
-      { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR - ASC 944)', debit: 0, credit: purePremium, memo: `UPR Liability for ${invNumber}` },
-      ...(feeAmount > 0 ? [{ account_code: '4100', account_name: 'Policy Fee Income', debit: 0, credit: feeAmount, memo: `Policy Fee earned for ${invNumber}` }] : [])
-    ];
+    if (payload.custom_journal_lines && Array.isArray(payload.custom_journal_lines) && payload.custom_journal_lines.length > 0) {
+      glLines = payload.custom_journal_lines.map(l => ({
+        account_code: l.account_code,
+        account_name: l.account_name || (l.account_code === '1100' ? 'Direct Premium Receivable' : l.account_code === '2200' ? 'Unearned Premium Reserve (UPR)' : 'Policy Fee & Admin Income'),
+        debit: parseFloat(l.debit) || 0,
+        credit: parseFloat(l.credit) || 0,
+        memo: l.memo || `Line for ${invNumber}`
+      }));
+      totalAmount = glLines.reduce((sum, l) => sum + (l.debit || 0), 0);
+      const feeLine = glLines.find(l => l.account_code === '4100');
+      feeAmount = feeLine ? (feeLine.credit || 0) : 0;
+      purePremium = totalAmount - feeAmount;
+    } else {
+      purePremium = Number(sch ? (sch.premium_amount || sch.premium || 0) : 9412.50);
+      feeAmount = Number(sch ? (sch.fee_amount || sch.fee || 0) : 0);
+      totalAmount = purePremium + feeAmount;
+      glLines = [
+        { account_code: '1100', account_name: 'Direct Premium Receivable', debit: totalAmount, credit: 0, memo: `Receivable billed for ${invNumber}` },
+        { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR)', debit: 0, credit: purePremium, memo: `UPR Liability for ${invNumber}` },
+        ...(feeAmount > 0 ? [{ account_code: '4100', account_name: 'Policy Fee & Admin Income', debit: 0, credit: feeAmount, memo: `Policy Fee earned for ${invNumber}` }] : [])
+      ];
+    }
 
     const glJournal = createAndPostJournal(
       'RULE_INV_ISSUE',
@@ -489,37 +528,43 @@ export const localStorageEngine = {
       _id: invId,
       invoice_id: invId,
       invoice_number: invNumber,
-      policy_number: sch.policy_number || sch.policy_id,
-      customer_name: sch.customer_name || 'Lone Pine Trucking LLC',
-      billing_account_id: { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
-      installment_no: sch.installment_number || sch.installment_no,
-      invoice_date: now.split('T')[0],
-      due_date: sch.due_date,
+      installment_schedule_id: sch?._id,
+      policy_number: policyId || sch?.policy_number || sch?.policy_id || 'POL-TX-8821',
+      policy_id: policyId || sch?.policy_id || sch?.policy_number || 'POL-TX-8821',
+      customer_name: sch?.customer_name || 'Lone Pine Trucking LLC',
+      billing_account_id: sch?.billing_account_id || { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
+      installment_no: installmentNum || sch?.installment_number || 1,
+      invoice_date: payload.invoice_date || now.split('T')[0],
+      due_date: sch?.due_date || payload.due_date || now.split('T')[0],
       total_amount: totalAmount.toFixed(2),
       amount_paid: '0.00',
       balance_due: totalAmount.toFixed(2),
       currency_code: 'USD',
-      status: 'ISSUED',
+      status: 'BILLED',
       journal_id: { _id: glJournal._id, journal_number: glJournal.journal_number },
-      lines: [
+      lines: payload.lines || [
         {
           line_no: 1,
           line_type: 'PREMIUM',
-          description: `Commercial Auto Liability Premium - Installment #${sch.installment_number || sch.installment_no}`,
-          amount: purePremium
+          description: `Commercial Auto Liability Premium - Installment #${installmentNum || sch?.installment_number || 1}`,
+          amount: purePremium.toFixed(2),
+          ledger_account_code: '1100'
         },
         ...(feeAmount > 0 ? [{
           line_no: 2,
           line_type: 'FEE',
           description: 'MGA Managing General Agency Policy Fee',
-          amount: feeAmount
+          amount: feeAmount.toFixed(2),
+          ledger_account_code: '4100'
         }] : [])
       ]
     };
 
-    sch.status = 'BILLED';
-    sch.invoice_id = { _id: invId, invoice_number: invNumber };
-    sch.invoice_number = invNumber;
+    if (sch) {
+      sch.status = 'BILLED';
+      sch.invoice_id = { _id: invId, invoice_number: invNumber };
+      sch.invoice_number = invNumber;
+    }
 
     // Update Billing Account AR Balance
     const ba = billingAccounts.find(b => b._id === 'ba-001' || b.account_number === 'BA-INSURED-LONEPINE');
@@ -534,6 +579,7 @@ export const localStorageEngine = {
 
     return {
       success: true,
+      message: `Invoice ${invNumber} issued & balanced double-entry GL journal posted!`,
       data: {
         invoice: newInvoice,
         journal: glJournal
@@ -541,17 +587,21 @@ export const localStorageEngine = {
     };
   },
 
-  // Cash Receipt Waterfall Action
-  postPaymentReceipt: ({ invoice_id, amount, payment_method }) => {
-    const invoices = getItem(KEYS.INVOICES, []);
-    const payments = getItem(KEYS.PAYMENTS, []);
+  // Cash Receipt Waterfall Action (Universal Signature)
+  postPaymentReceipt: (payload = {}) => {
+    const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
+    const payments = getItem(KEYS.PAYMENTS, INITIAL_PAYMENTS);
     const schedules = getItem(KEYS.SCHEDULES, INITIAL_SCHEDULES);
     const billingAccounts = getItem(KEYS.BILLING_ACCOUNTS, INITIAL_BILLING_ACCOUNTS);
 
-    const inv = invoices.find(i => i._id === invoice_id || i.invoice_id === invoice_id);
-    if (!inv) throw new Error('Invoice not found');
+    const targetInvId = payload.target_invoice_id || payload.invoice_id || payload._id;
+    let inv = invoices.find(i => i._id === targetInvId || i.invoice_id === targetInvId || i.invoice_number === targetInvId);
+    if (!inv) {
+      inv = invoices.find(i => i.status !== 'PAID') || invoices[0];
+    }
+    if (!inv) throw new Error('No open invoice found to apply payment to');
 
-    const paidAmt = Number(amount || inv.balance_due);
+    const paidAmt = Number(payload.amount || inv.balance_due || inv.total_amount);
     const currentPaid = Number(inv.amount_paid || 0);
     const newTotalPaid = Math.round((currentPaid + paidAmt) * 100) / 100;
     const newBalDue = Math.max(0, Math.round((Number(inv.total_amount) - newTotalPaid) * 100) / 100);
@@ -560,14 +610,14 @@ export const localStorageEngine = {
     inv.balance_due = newBalDue.toFixed(2);
     inv.status = newBalDue === 0 ? 'PAID' : 'PARTIALLY_PAID';
 
-    // Update installment status
-    const sch = schedules.find(s => s.invoice_number === inv.invoice_number || (s.invoice_id && s.invoice_id._id === inv._id));
-    if (sch) {
+    // Update matching installment schedule
+    const sch = schedules.find(s => s.invoice_number === inv.invoice_number || (s.invoice_id && (s.invoice_id._id === inv._id || s.invoice_id.invoice_number === inv.invoice_number)));
+    if (sch && newBalDue === 0) {
       sch.status = 'PAID';
     }
 
     const pmtId = `pmt-${Date.now()}`;
-    const pmtNumber = `PMT-2026-${String(payments.length + 1).padStart(5, '0')}`;
+    const pmtNumber = `PMT-2026-${String(payments.length + 1).padStart(4, '0')}`;
     const now = new Date().toISOString();
 
     const newPayment = {
@@ -576,14 +626,22 @@ export const localStorageEngine = {
       payment_number: pmtNumber,
       invoice_id: { _id: inv._id, invoice_number: inv.invoice_number },
       invoice_number: inv.invoice_number,
-      customer_name: inv.customer_name,
-      billing_account_id: { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
+      customer_name: inv.customer_name || 'Lone Pine Trucking LLC',
+      billing_account_id: inv.billing_account_id || { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
       amount: paidAmt.toFixed(2),
+      allocated_amount: paidAmt.toFixed(2),
+      unapplied_amount: '0.00',
       currency_code: 'USD',
-      method: payment_method || 'ACH_TRANSFER',
-      fiduciary_trust_account: 'Premium Trust Bank (Texas § 4053)',
-      received_at: now,
-      status: 'ALLOCATED'
+      payment_method: payload.payment_method || 'ACH',
+      reference_number: payload.reference_number || `ACH-DEP-${Date.now().toString().slice(-5)}`,
+      received_at: now.split('T')[0],
+      status: 'SETTLED',
+      waterfall: {
+        policy_fee: Math.round(paidAmt * 0.015 * 100) / 100,
+        broker_commission: Math.round(paidAmt * 0.10 * 100) / 100,
+        mga_override: Math.round(paidAmt * 0.10 * 100) / 100,
+        carrier_net: Math.round(paidAmt * 0.785 * 100) / 100
+      }
     };
 
     // Update Billing Account AR Balance
@@ -592,29 +650,32 @@ export const localStorageEngine = {
       ba.ar_balance = Math.max(0, Math.round(((ba.ar_balance || 0) - paidAmt) * 100) / 100);
     }
 
-    // Texas § 4053 Waterfall GL allocation (80% Carrier Net, 10% Broker Split, 10% MGA Fee)
-    const pureRiskPortion = Math.min(paidAmt, 9412.50);
-    const feePortion = paidAmt > 9412.50 ? Math.round((paidAmt - 9412.50) * 100) / 100 : 0;
-
-    const carrierNet = Math.round(pureRiskPortion * 0.80 * 100) / 100; // $7,530.00
-    const brokerComm = Math.round(pureRiskPortion * 0.10 * 100) / 100; // $941.25
-    const mgaIncome = Math.round((pureRiskPortion * 0.10 + feePortion) * 100) / 100; // $941.25 + $150 = $1,091.25
-
-    const glLines = [
-      { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: paidAmt, credit: 0, memo: `Texas § 4053 fiduciary receipt ${pmtNumber}` },
-      { account_code: '1100', account_name: 'Premium Receivable', debit: 0, credit: paidAmt, memo: `Clear AR for ${inv.invoice_number}` },
-      { account_code: '2010', account_name: 'Due to Carrier', debit: 0, credit: carrierNet, memo: `Carrier Net Payable (80%) for ${inv.invoice_number}` },
-      { account_code: '2020', account_name: 'Broker Commission Payable', debit: 0, credit: brokerComm, memo: `Retail Broker split (10%) for ${inv.invoice_number}` },
-      { account_code: '4200', account_name: 'MGA Commission Income', debit: 0, credit: mgaIncome, memo: `MGA fee income recognized for ${inv.invoice_number}` }
-    ];
+    // Double-Entry balanced GL Journal
+    let glLines = [];
+    if (payload.custom_journal_lines && Array.isArray(payload.custom_journal_lines) && payload.custom_journal_lines.length > 0) {
+      glLines = payload.custom_journal_lines.map(l => ({
+        account_code: l.account_code,
+        account_name: l.account_name || (l.account_code === '1010' ? 'Premium Trust Bank (Texas § 4053)' : 'Direct Premium Receivable'),
+        debit: parseFloat(l.debit) || 0,
+        credit: parseFloat(l.credit) || 0,
+        memo: l.memo || `Payment line for ${inv.invoice_number}`
+      }));
+    } else {
+      glLines = [
+        { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: paidAmt, credit: 0, memo: `Texas § 4053 fiduciary receipt ${pmtNumber}` },
+        { account_code: '1100', account_name: 'Direct Premium Receivable', debit: 0, credit: paidAmt, memo: `Clear AR for ${inv.invoice_number}` }
+      ];
+    }
 
     const glJournal = createAndPostJournal(
       'RULE_PMT_RECEIVED',
       'billing.payment.received',
       glLines,
-      `Texas § 4053 Waterfall allocation for payment ${pmtNumber}`,
+      `Texas § 4053 Fiduciary cash receipt & AR knock-off for ${inv.invoice_number}`,
       pmtId
     );
+
+    newPayment.journal_id = { _id: glJournal._id, journal_number: glJournal.journal_number };
 
     payments.unshift(newPayment);
     setItem(KEYS.PAYMENTS, payments);
@@ -624,6 +685,7 @@ export const localStorageEngine = {
 
     return {
       success: true,
+      message: `Payment ${pmtNumber} captured, Texas § 4053 waterfall allocated, and GL posted!`,
       data: {
         payment: newPayment,
         journal: glJournal
@@ -710,7 +772,307 @@ export const localStorageEngine = {
 
   // Commissions
   getCommissionsOverview: () => ({ success: true, data: getItem(KEYS.COMMISSIONS, []) }),
-  getFiduciaryAccounts: () => ({ success: true, data: getItem(KEYS.FIDUCIARY_ACCOUNTS, []) }),
+  getFiduciaryAccounts: () => {
+    const fidAccounts = getItem(KEYS.FIDUCIARY_ACCOUNTS, []);
+    const accounts = getItem(KEYS.ACCOUNTS, INITIAL_ACCOUNTS);
+    const acc1010 = accounts.find(a => (a.account_code || a.code) === '1010');
+    const liveBal = acc1010 ? Number(acc1010.current_balance || acc1010.balance || 0) : 0;
+    const enriched = (fidAccounts.length > 0 ? fidAccounts : [
+      {
+        _id: 'fa-001',
+        account_name: 'Premium Trust Bank (Texas § 4053 Segregated)',
+        account_number: '•••• 4053',
+        bank_name: 'Texas Capital Fiduciary Bank',
+        account_type: 'FIDUCIARY_PREMIUM_TRUST',
+        currency_code: 'USD',
+        jurisdiction_code: 'TX',
+        jurisdiction_statute: 'Texas § 4053',
+        status: 'ACTIVE'
+      }
+    ]).map(fa => ({
+      ...fa,
+      account_code: fa.account_code || 'FA-TX-4053',
+      gl_account_code: '1010',
+      current_balance: liveBal,
+      available_balance: liveBal
+    }));
+    return { success: true, data: enriched };
+  },
+
+
+  // Multi-Carrier & Broker Commission Share Allocation
+  allocateShares: (payload = {}) => {
+    const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
+    const accounts = getItem(KEYS.ACCOUNTS, INITIAL_ACCOUNTS);
+    const transactions = getItem(KEYS.COMMISSION_TRANSACTIONS, []);
+
+    const invRef = payload.invoice_reference;
+    let inv = invoices.find(i => i.invoice_number === invRef || i._id === invRef || i.invoice_id === invRef);
+    if (!inv) {
+      inv = invoices.find(i => !(i.allocation_status === 'ALLOCATED' || i.is_allocated)) || invoices[0];
+    }
+    if (!inv) throw new Error('No invoice found to allocate shares.');
+
+    const prem = Number(payload.installment_premium || inv.premium_amount || inv.total_amount || 9412.50);
+    const cRate = Number(payload.carrier_rate || 80.0);
+    const bRate = Number(payload.broker_rate || 10.0);
+    const mRate = Number(payload.mga_rate || 10.0);
+
+    const carrierAmt = Math.round(((prem * cRate) / 100) * 100) / 100;
+    const brokerAmt = Math.round(((prem * bRate) / 100) * 100) / 100;
+    const mgaAmt = Math.max(0, Math.round((prem - carrierAmt - brokerAmt) * 100) / 100);
+
+    const carrierDisplay = payload.carrier_name || 'Summit Mutual Insurance Company';
+    const brokerDisplay = payload.broker_name || 'Brightline Agency';
+
+    // Double-Entry balanced GL Journal
+    let glLines = [];
+    if (payload.custom_journal_lines && Array.isArray(payload.custom_journal_lines) && payload.custom_journal_lines.length > 0) {
+      glLines = payload.custom_journal_lines.map(l => ({
+        account_code: l.account_code,
+        account_name: l.account_name || (l.account_code === '2200' ? 'Unearned Premium Reserve (UPR)' : l.account_code === '2010' ? 'Due to Carrier' : l.account_code === '2020' ? 'Broker Commission Payable' : 'MGA Commission Income'),
+        debit: parseFloat(l.debit) || 0,
+        credit: parseFloat(l.credit) || 0,
+        memo: l.memo || `Allocation line for ${inv.invoice_number}`
+      }));
+    } else {
+      glLines = [
+        { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR)', debit: prem, credit: 0, memo: `Dr 2200 UPR released upon payment allocation (${inv.invoice_number})` },
+        { account_code: '2010', account_name: 'Due to Underwriting Carrier', debit: 0, credit: carrierAmt, memo: `Cr 2010 Due to Underwriting Carrier (${carrierDisplay})` },
+        { account_code: '2020', account_name: 'Broker Commission Payable', debit: 0, credit: brokerAmt, memo: `Cr 2020 Commission Payable to Retail Broker (${brokerDisplay})` },
+        { account_code: '4200', account_name: 'MGA Commission Income', debit: 0, credit: mgaAmt, memo: `Cr 4200 Retained MGA Underwriting Commission (Harbor MGA)` }
+      ];
+    }
+
+    const glJournal = createAndPostJournal(
+      'RULE_COMMISSION_ALLOCATED',
+      'commission.split.allocated',
+      glLines,
+      `Multi-Carrier & Broker Commission Share Allocation for ${inv.invoice_number}`,
+      inv._id
+    );
+
+    // Mark invoice ALLOCATED
+    inv.allocation_status = 'ALLOCATED';
+    inv.is_allocated = true;
+    inv.allocation_journal_number = glJournal.journal_number;
+    inv.allocated_at = new Date().toISOString();
+
+    // Push commission transactions
+    transactions.unshift(
+      {
+        _id: `ctx-c-${Date.now()}`,
+        transaction_number: `TX-COMM-${String(transactions.length + 1).padStart(4, '0')}`,
+        policy_reference: payload.policy_reference || inv.policy_number || 'POL-TX-8821',
+        payer_party_id: 'Harbor MGA',
+        payee_party_id: `${carrierDisplay} (Carrier)`,
+        basis_amount: prem.toFixed(2),
+        rate_applied: cRate.toFixed(1),
+        calculated_amount: carrierAmt.toFixed(2),
+        lifecycle_status: 'PAYABLE',
+        idempotency_key: `CARRIER-SHARE-${inv.invoice_number}`,
+        created_at: new Date().toISOString()
+      },
+      {
+        _id: `ctx-b-${Date.now() + 1}`,
+        transaction_number: `TX-COMM-${String(transactions.length + 2).padStart(4, '0')}`,
+        policy_reference: payload.policy_reference || inv.policy_number || 'POL-TX-8821',
+        payer_party_id: 'Harbor MGA',
+        payee_party_id: `${brokerDisplay} (Broker)`,
+        basis_amount: prem.toFixed(2),
+        rate_applied: bRate.toFixed(1),
+        calculated_amount: brokerAmt.toFixed(2),
+        lifecycle_status: 'PAYABLE',
+        idempotency_key: `BROKER-COMM-${inv.invoice_number}`,
+        created_at: new Date().toISOString()
+      }
+    );
+
+    setItem(KEYS.INVOICES, invoices);
+    setItem(KEYS.COMMISSION_TRANSACTIONS, transactions);
+
+    return {
+      success: true,
+      message: `Successfully allocated ${inv.invoice_number} to Carrier (80%), Broker (10%), and MGA (10%)! Journal #${glJournal.journal_number} posted.`,
+      data: {
+        invoice: inv,
+        journal: glJournal
+      }
+    };
+  },
+
+  getCommissionTransactions: () => ({ success: true, data: getItem(KEYS.COMMISSION_TRANSACTIONS, []) }),
+
+  disburseBrokerCommission: (txId, payload = {}) => {
+    const transactions = getItem(KEYS.COMMISSION_TRANSACTIONS, []);
+    const tx = transactions.find(t => t._id === txId) || transactions[0];
+    if (!tx) throw new Error('Transaction not found.');
+
+    const amt = Number(tx.calculated_amount || 941.25);
+    const glLines = [
+      { account_code: '2020', account_name: 'Broker Commission Payable', debit: amt, credit: 0, memo: `Discharge Broker Commission Payable for ${tx.transaction_number || 'TX'}` },
+      { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: 0, credit: amt, memo: 'ACH Disbursement from Texas § 4053 Premium Trust' }
+    ];
+
+    const glJournal = createAndPostJournal(
+      'RULE_BROKER_COMMISSION_DISBURSE',
+      'commission.broker.disbursed',
+      glLines,
+      `Broker Commission ACH disbursement to ${tx.payee_party_id}`,
+      txId
+    );
+
+    tx.lifecycle_status = 'SETTLED';
+    tx.status = 'PAID';
+    tx.disbursed_at = new Date().toISOString();
+    tx.payment_reference = payload.payment_reference || `ACH-BROKER-${Date.now()}`;
+
+    setItem(KEYS.COMMISSION_TRANSACTIONS, transactions);
+
+    return {
+      success: true,
+      message: `Broker commission of ${amt.toFixed(2)} disbursed successfully via ACH! Journal #${glJournal.journal_number} posted.`,
+      data: {
+        transaction: tx,
+        journal: glJournal
+      }
+    };
+  },
+
+  getSettlements: () => ({ success: true, data: getItem(KEYS.SETTLEMENTS, []) }),
+
+  previewSettlement: (query) => {
+    const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
+    const statements = getItem(KEYS.SETTLEMENTS, []);
+    const existingStmt = statements.find(s => s.status !== 'VOID');
+
+    const allocatedInvoices = invoices.filter(i => (i.allocation_status === 'ALLOCATED' || i.is_allocated));
+    const grossEligible = allocatedInvoices.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 9412.50), 0) || 9412.50;
+    const withheld = Math.round(grossEligible * 0.20 * 100) / 100;
+    const netDue = Math.round(grossEligible * 0.80 * 100) / 100;
+
+    return {
+      success: true,
+      data: {
+        gross_eligible_premium: grossEligible.toFixed(2),
+        commission_withheld: withheld.toFixed(2),
+        claims_offset: '0.00',
+        net_due_carrier: netDue.toFixed(2),
+        can_generate: !existingStmt || existingStmt.status === 'PAID',
+        already_generated: !!existingStmt && existingStmt.status !== 'PAID',
+        already_settled: existingStmt?.status === 'PAID' || existingStmt?.status === 'DISBURSED',
+        existing_statement: existingStmt ? { ...existingStmt, net: existingStmt.net_due_carrier } : null,
+        eligible_invoices_count: allocatedInvoices.length || 1
+      }
+    };
+  },
+
+  generateSettlement: (payload = {}) => {
+    const statements = getItem(KEYS.SETTLEMENTS, []);
+    const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
+
+    const allocatedInvoices = invoices.filter(i => (i.allocation_status === 'ALLOCATED' || i.is_allocated));
+    const grossEligible = allocatedInvoices.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 9412.50), 0) || 9412.50;
+    const withheld = Math.round(grossEligible * 0.20 * 100) / 100;
+    const netDue = Math.round(grossEligible * 0.80 * 100) / 100;
+
+    const stmtNumber = `STMT-SUMMIT-2026-${String(statements.length + 1).padStart(3, '0')}`;
+    const newStmt = {
+      _id: `stmt-${Date.now()}`,
+      statement_number: stmtNumber,
+      carrier_party_id: payload.carrier_party_id || 'CARRIER-SUMMIT',
+      carrier_name: 'Summit Mutual Insurance Company',
+      period: '2026-07',
+      period_start: payload.period_start || '2026-07-01',
+      period_end: payload.period_end || '2026-07-31',
+      gross_eligible_premium: grossEligible.toFixed(2),
+      commission_withheld: withheld.toFixed(2),
+      claims_offset: '0.00',
+      net_due_carrier: netDue.toFixed(2),
+      status: 'PENDING_APPROVAL',
+      generated_at: new Date().toISOString()
+    };
+
+    statements.unshift(newStmt);
+    setItem(KEYS.SETTLEMENTS, statements);
+
+    return {
+      success: true,
+      message: `Generated Settlement Statement ${stmtNumber} for Summit Mutual (${netDue.toFixed(2)})!`,
+      data: { statement: newStmt }
+    };
+  },
+
+  disburseSettlement: (statementId, payload = {}) => {
+    const statements = getItem(KEYS.SETTLEMENTS, []);
+    const stmt = statements.find(s => s._id === statementId || s.statement_id === statementId) || statements[0];
+    if (!stmt) throw new Error('Statement not found.');
+
+    const netDue = Number(stmt.net_due_carrier || 7530.00);
+
+    // Double-Entry GL Journal
+    let glLines = [];
+    if (payload.custom_journal_lines && Array.isArray(payload.custom_journal_lines) && payload.custom_journal_lines.length > 0) {
+      glLines = payload.custom_journal_lines.map(l => ({
+        account_code: l.account_code,
+        account_name: l.account_name || (l.account_code === '2010' ? 'Due to Underwriting Carrier' : 'Premium Trust Bank (Texas § 4053)'),
+        debit: parseFloat(l.debit) || 0,
+        credit: parseFloat(l.credit) || 0,
+        memo: l.memo || `Settlement line for ${stmt.statement_number}`
+      }));
+    } else {
+      glLines = [
+        { account_code: '2010', account_name: 'Due to Underwriting Carrier', debit: netDue, credit: 0, memo: `Discharge Due to Carrier for ${stmt.statement_number}` },
+        { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: 0, credit: netDue, memo: 'Disbursement from Texas § 4053 Premium Trust' }
+      ];
+    }
+
+    const glJournal = createAndPostJournal(
+      'RULE_CARRIER_SETTLEMENT',
+      'settlement.carrier.disbursed',
+      glLines,
+      `Carrier monthly settlement disbursement for ${stmt.statement_number}`,
+      statementId
+    );
+
+    stmt.status = 'PAID';
+    stmt.payment_reference = payload.payment_reference || `ACH-SUMMIT-DISBURSE-${Date.now().toString().slice(-4)}`;
+    stmt.disbursed_at = new Date().toISOString();
+    stmt.journal = glJournal;
+
+    setItem(KEYS.SETTLEMENTS, statements);
+
+    return {
+      success: true,
+      message: `Carrier Settlement disbursed from Texas § 4053 Trust! Journal #${glJournal.journal_number} posted for ${netDue.toFixed(2)}.`,
+      data: {
+        statement: stmt,
+        journal: glJournal
+      }
+    };
+  },
+
+  executeSweep: (payload = {}) => {
+    const amount = Number(payload.amount || 3765.00);
+    const glLines = [
+      { account_code: '1000', account_name: 'Operating Cash', debit: amount, credit: 0, memo: 'MGA Earned Commission transferred to Operating Account' },
+      { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: 0, credit: amount, memo: 'Texas § 4053 Fiduciary Trust Cash Sweep' }
+    ];
+
+    const glJournal = createAndPostJournal(
+      'RULE_MGA_SWEEP',
+      'fiduciary.sweep.executed',
+      glLines,
+      `MGA Earned Commission Sweep of ${amount.toFixed(2)} from Trust to Operating Cash`,
+      `sweep-${Date.now()}`
+    );
+
+    return {
+      success: true,
+      message: `Fiduciary sweep of ${amount.toFixed(2)} executed from Texas § 4053 Trust (1010) to Operating Cash (1000)! Journal #${glJournal.journal_number} posted.`,
+      data: { journal: glJournal }
+    };
+  },
 
   // Dashboard Metrics
   getDashboardMetrics: () => {

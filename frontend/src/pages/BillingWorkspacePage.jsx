@@ -63,10 +63,14 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
   const [showFinanceModal, setShowFinanceModal] = useState(false);
   const [snapshotViewMode, setSnapshotViewMode] = useState('POLICIES'); // 'POLICIES' | 'TRANSACTIONS' | 'FINANCE'
 
-  const invoiceRules = publishedRules.filter((r) => r.event_code === 'billing.invoice.issued');
-  const paymentRules = publishedRules.filter((r) => r.event_code === 'billing.payment.received');
-  const activeInvoiceRule = invoiceRules.find((r) => r._id === (selectedInvoiceRuleId || invoiceRules[0]?._id)) || invoiceRules[0];
-  const activePaymentRule = paymentRules.find((r) => r._id === (selectedPaymentRuleId || paymentRules[0]?._id)) || paymentRules[0];
+  const invoiceRules = publishedRules.filter((r) => r.event_code === 'billing.invoice.issued' || r.event_type === 'billing.invoice.issued' || r.rule_code === 'RULE_INV_ISSUE');
+  const paymentRules = publishedRules.filter((r) => r.event_code === 'billing.payment.received' || r.event_type === 'billing.payment.received' || r.rule_code === 'RULE_PMT_RECEIVED');
+  const fallbackInvoiceRule = { _id: 'rule-01', rule_code: 'RULE_INV_ISSUE', rule_name: 'Customer Installment Invoice Issuance' };
+  const fallbackPaymentRule = { _id: 'rule-02', rule_code: 'RULE_PMT_RECEIVED', rule_name: 'Customer Premium Cash Receipt Waterfall' };
+  const effectiveInvoiceRules = invoiceRules.length > 0 ? invoiceRules : [fallbackInvoiceRule];
+  const effectivePaymentRules = paymentRules.length > 0 ? paymentRules : [fallbackPaymentRule];
+  const activeInvoiceRule = effectiveInvoiceRules.find((r) => r._id === (selectedInvoiceRuleId || effectiveInvoiceRules[0]?._id)) || effectiveInvoiceRules[0];
+  const activePaymentRule = effectivePaymentRules.find((r) => r._id === (selectedPaymentRuleId || effectivePaymentRules[0]?._id)) || effectivePaymentRules[0];
 
   // Modals & Detail
   const [showNewAccountModal, setShowNewAccountModal] = useState(false);
@@ -2936,11 +2940,11 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                   <Sliders className="w-3.5 h-3.5 text-brand-400" />
                   <span className="font-semibold text-slate-200 text-[11px]">Active Posting Rule:</span>
                   <select
-                    value={selectedInvoiceRuleId || invoiceRules[0]?._id}
+                    value={selectedInvoiceRuleId || effectiveInvoiceRules[0]?._id}
                     onChange={(e) => setSelectedInvoiceRuleId(e.target.value)}
                     className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white"
                   >
-                    {invoiceRules.map((r) => (
+                    {effectiveInvoiceRules.map((r) => (
                       <option key={r._id} value={r._id}>
                         {r.rule_code} — {r.rule_name}
                       </option>
@@ -3095,9 +3099,9 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || invoiceRules.length === 0 || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
+                  disabled={loading || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
                   className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    loading || invoiceRules.length === 0 || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                    loading || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
                   }`}
@@ -3432,9 +3436,9 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 </button>
                 <button
                   type="submit"
-                  disabled={paymentRules.length === 0 || !paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
+                  disabled={!paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
                   className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    paymentRules.length === 0 || !paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                    !paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
                   }`}
