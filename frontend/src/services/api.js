@@ -79,9 +79,7 @@ export const authApi = {
   },
   getAccountDetail: async (id) => {
     await delay();
-    const accs = localStorageEngine.getAccounts().data;
-    const acc = accs.find(a => a.id === id || a._id === id || a.code === id);
-    return { success: true, data: acc || accs[0] };
+    return localStorageEngine.getAccountDetail(id);
   },
   createAccount: async (payload) => {
     await delay();
@@ -381,8 +379,14 @@ export const counterpartiesApi = {
     return { success: true, data: p || parties[0] };
   },
   updateParty: async (id, payload) => ({ success: true }),
-  addPartyRole: async () => ({ success: true }),
-  seedParties: async () => ({ success: true })
+  addPartyRole: async (partyId, payload) => {
+    await delay();
+    return localStorageEngine.addPartyRole(partyId, payload);
+  },
+  seedParties: async () => {
+    await delay();
+    return localStorageEngine.seedParties();
+  }
 };
 
 export const dashboardApi = {

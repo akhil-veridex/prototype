@@ -79,14 +79,14 @@ export const INITIAL_ACCOUNTS = [
     type: 'ASSET',
     normal_balance: 'DEBIT',
     normal: 'DEBIT',
-    total_debits: 0,
+    total_debits: 9562.50,
     total_credits: 0,
-    debit_activity: 0,
+    debit_activity: 9562.50,
     credit_activity: 0,
-    period_debit: 0,
+    period_debit: 9562.50,
     period_credit: 0,
-    current_balance: 0,
-    balance: 0,
+    current_balance: 9562.50,
+    balance: 9562.50,
     is_fiduciary: true,
     compliance_tag: 'Texas § 4053'
   },
@@ -123,14 +123,14 @@ export const INITIAL_ACCOUNTS = [
     type: 'ASSET',
     normal_balance: 'DEBIT',
     normal: 'DEBIT',
-    total_debits: 0,
-    total_credits: 0,
-    debit_activity: 0,
-    credit_activity: 0,
-    period_debit: 0,
-    period_credit: 0,
-    current_balance: 0,
-    balance: 0,
+    total_debits: 9562.50,
+    total_credits: 9562.50,
+    debit_activity: 9562.50,
+    credit_activity: 9562.50,
+    period_debit: 9562.50,
+    period_credit: 9562.50,
+    current_balance: 0.00,
+    balance: 0.00,
     is_fiduciary: false,
     compliance_tag: null
   },
@@ -277,14 +277,14 @@ export const INITIAL_ACCOUNTS = [
     type: 'LIABILITY',
     normal_balance: 'CREDIT',
     normal: 'CREDIT',
-    total_debits: 0,
-    total_credits: 0,
-    debit_activity: 0,
-    credit_activity: 0,
-    period_debit: 0,
-    period_credit: 0,
-    current_balance: 0,
-    balance: 0,
+    total_debits: 3137.50,
+    total_credits: 9412.50,
+    debit_activity: 3137.50,
+    credit_activity: 9412.50,
+    period_debit: 3137.50,
+    period_credit: 9412.50,
+    current_balance: 6275.00,
+    balance: 6275.00,
     is_fiduciary: false,
     compliance_tag: null
   },
@@ -343,14 +343,14 @@ export const INITIAL_ACCOUNTS = [
     type: 'REVENUE',
     normal_balance: 'CREDIT',
     normal: 'CREDIT',
-    total_debits: 0,
-    total_credits: 0,
-    debit_activity: 0,
-    credit_activity: 0,
-    period_debit: 0,
-    period_credit: 0,
-    current_balance: 0,
-    balance: 0,
+    total_debits: 0.00,
+    total_credits: 3137.50,
+    debit_activity: 0.00,
+    credit_activity: 3137.50,
+    period_debit: 0.00,
+    period_credit: 3137.50,
+    current_balance: 3137.50,
+    balance: 3137.50,
     is_fiduciary: false,
     compliance_tag: null
   },
@@ -365,14 +365,14 @@ export const INITIAL_ACCOUNTS = [
     type: 'REVENUE',
     normal_balance: 'CREDIT',
     normal: 'CREDIT',
-    total_debits: 0,
-    total_credits: 0,
-    debit_activity: 0,
-    credit_activity: 0,
-    period_debit: 0,
-    period_credit: 0,
-    current_balance: 0,
-    balance: 0,
+    total_debits: 0.00,
+    total_credits: 150.00,
+    debit_activity: 0.00,
+    credit_activity: 150.00,
+    period_debit: 0.00,
+    period_credit: 150.00,
+    current_balance: 150.00,
+    balance: 150.00,
     is_fiduciary: false,
     compliance_tag: null
   },
@@ -686,9 +686,9 @@ export const INITIAL_SCHEDULES = [
     fee: 150.00,
     total_amount: 9562.50,
     total_due: 9562.50,
-    status: 'SCHEDULED', // SCHEDULED, BILLED, PAID
-    invoice_id: null,
-    invoice_number: null,
+    status: 'PAID',
+    invoice_id: { _id: 'inv-001', invoice_number: 'INV-2026-0001' },
+    invoice_number: 'INV-2026-0001',
     dimensions: {}
   },
   {
@@ -874,4 +874,109 @@ export const INITIAL_CHECKLIST_STEPS = [
   { step_no: 5, step_code: 'DEPRECIATION', title: 'Fixed Assets Depreciation & Prepaid Reinsurance Amortization', status: 'PENDING', completed_at: null },
   { step_no: 6, step_code: 'TRIAL_BALANCE_CERT', title: 'Trial Balance Balance Certification ($Dr = $Cr)', status: 'PENDING', completed_at: null },
   { step_no: 7, step_code: 'PERIOD_HARD_LOCK', title: 'Hard Period Accounting Lock & Financial Statements Release', status: 'PENDING', completed_at: null }
+];
+
+
+export const INITIAL_INVOICES = [
+  {
+    _id: 'inv-001',
+    invoice_id: 'inv-001',
+    invoice_number: 'INV-2026-0001',
+    installment_schedule_id: 'sch-001',
+    policy_number: 'POL-TX-8821',
+    policy_id: 'POL-TX-8821',
+    billing_account_id: { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
+    customer_name: 'Lone Pine Trucking LLC',
+    due_date: '2026-01-07',
+    total_amount: 9562.50,
+    amount_paid: 9562.50,
+    balance_due: 0.00,
+    status: 'PAID',
+    journal_id: { _id: 'jrn-001', journal_number: 'JRN-2026-0001' },
+    lines: [
+      { _id: 'line-01', description: 'Installment #1 Commercial Auto Gross Premium', amount: 9412.50, account_code: '1100' },
+      { _id: 'line-02', description: 'Installment Setup & Admin Fee', amount: 150.00, account_code: '4100' }
+    ]
+  }
+];
+
+export const INITIAL_PAYMENTS = [
+  {
+    _id: 'pmt-001',
+    payment_number: 'PMT-2026-0001',
+    billing_account_id: { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
+    target_invoice_id: 'inv-001',
+    payment_method: 'ACH',
+    reference_number: 'ACH-DEP-88991',
+    amount: 9562.50,
+    allocated_amount: 9562.50,
+    unapplied_amount: 0.00,
+    status: 'SETTLED',
+    received_at: '2026-01-08',
+    journal_id: { _id: 'jrn-002', journal_number: 'JRN-2026-0002' },
+    waterfall: {
+      policy_fee: 150.00,
+      broker_commission: 941.25,
+      mga_override: 941.25,
+      carrier_net: 7530.00
+    }
+  }
+];
+
+export const INITIAL_JOURNALS = [
+  {
+    _id: 'jrn-001',
+    entry_number: 'JRN-2026-0001',
+    journal_number: 'JRN-2026-0001',
+    rule_code: 'RULE_INV_ISSUE',
+    event_name: 'Customer Invoice Issued (Inst #1)',
+    posting_date: '2026-01-01',
+    description: 'Invoice INV-2026-0001 issued for Policy POL-TX-8821 Inst #1',
+    reference_id: 'inv-001',
+    status: 'POSTED',
+    is_balanced: true,
+    total_debit: 9562.50,
+    total_credit: 9562.50,
+    lines: [
+      { account_code: '1100', account_name: 'Direct Premium Receivable', debit: 9562.50, credit: 0, memo: 'Dr 1100 AR - Invoice INV-2026-0001' },
+      { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR)', debit: 0, credit: 9412.50, memo: 'Cr 2200 UPR - Unearned Premium' },
+      { account_code: '4100', account_name: 'Policy Fee & Administration Income', debit: 0, credit: 150.00, memo: 'Cr 4100 Fee - Installment Fee' }
+    ]
+  },
+  {
+    _id: 'jrn-002',
+    entry_number: 'JRN-2026-0002',
+    journal_number: 'JRN-2026-0002',
+    rule_code: 'RULE_PMT_RECEIVED',
+    event_name: 'Cash Received & Texas § 4053 Waterfall Allocation',
+    posting_date: '2026-01-08',
+    description: 'Payment PMT-2026-0001 received via ACH for INV-2026-0001',
+    reference_id: 'pmt-001',
+    status: 'POSTED',
+    is_balanced: true,
+    total_debit: 9562.50,
+    total_credit: 9562.50,
+    lines: [
+      { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: 9562.50, credit: 0, memo: 'Dr 1010 Texas Fiduciary Premium Trust Bank' },
+      { account_code: '1100', account_name: 'Direct Premium Receivable', debit: 0, credit: 9562.50, memo: 'Cr 1100 AR Knock-off' }
+    ]
+  },
+  {
+    _id: 'jrn-003',
+    entry_number: 'JRN-2026-0003',
+    journal_number: 'JRN-2026-0003',
+    rule_code: 'RULE_UPR_EARN',
+    event_name: 'UPR Daily 1/365 Amortization Recognition',
+    posting_date: '2026-01-31',
+    description: 'January 2026 Earned Premium Amortization Recognition',
+    reference_id: 'upr-jan-2026',
+    status: 'POSTED',
+    is_balanced: true,
+    total_debit: 3137.50,
+    total_credit: 3137.50,
+    lines: [
+      { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR)', debit: 3137.50, credit: 0, memo: 'Dr 2200 UPR Release (Amortization)' },
+      { account_code: '4000', account_name: 'Gross Written Premium Revenue', debit: 0, credit: 3137.50, memo: 'Cr 4000 Earned Premium Revenue' }
+    ]
+  }
 ];

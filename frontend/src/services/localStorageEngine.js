@@ -11,8 +11,11 @@ import {
   INITIAL_FINANCE_AGREEMENTS,
   INITIAL_FISCAL_PERIODS,
   INITIAL_POSTING_RULES,
-  INITIAL_CHECKLIST_STEPS
-} from './localSeedData';
+  INITIAL_CHECKLIST_STEPS,
+  INITIAL_INVOICES,
+  INITIAL_PAYMENTS,
+  INITIAL_JOURNALS
+} from './localSeedData.js';
 
 const KEYS = {
   TENANTS: 'veridex_tenants',
@@ -63,9 +66,19 @@ function setItem(key, value) {
 /**
  * Initialize all datasets into localStorage on application load.
  */
+export const SEED_DATA_VERSION = 'v2.4_20coa_parties_active_data';
+
 export function initLocalStorage(force = false) {
-  if (force || !localStorage.getItem(KEYS.ACCOUNTS) || !localStorage.getItem(KEYS.COUNTERPARTIES)) {
-    console.log('[LocalStorageEngine] Seeding initial dataset...');
+  const currentVersion = localStorage.getItem('veridex_seed_version');
+  const storedAccounts = getItem(KEYS.ACCOUNTS, []);
+  const storedParties = getItem(KEYS.COUNTERPARTIES, []);
+  const needsReseed = force ||
+    currentVersion !== SEED_DATA_VERSION ||
+    storedAccounts.length < 20 ||
+    (storedParties.length > 0 && !storedParties[0].party_code);
+
+  if (needsReseed) {
+    console.log('[LocalStorageEngine] Seeding initial dataset (' + SEED_DATA_VERSION + ')...');
     setItem(KEYS.TENANTS, INITIAL_TENANTS);
     setItem(KEYS.CURRENT_TENANT, INITIAL_TENANTS[0].id);
     setItem(KEYS.USER, INITIAL_USER);
@@ -75,13 +88,13 @@ export function initLocalStorage(force = false) {
     setItem(KEYS.BILLING_ACCOUNTS, INITIAL_BILLING_ACCOUNTS);
     setItem(KEYS.BILLING_PLANS, INITIAL_BILLING_PLANS);
     setItem(KEYS.SCHEDULES, INITIAL_SCHEDULES);
-    setItem(KEYS.INVOICES, []);
-    setItem(KEYS.PAYMENTS, []);
+    setItem(KEYS.INVOICES, INITIAL_INVOICES);
+    setItem(KEYS.PAYMENTS, INITIAL_PAYMENTS);
     setItem(KEYS.ADJUSTMENTS, []);
     setItem(KEYS.POLICY_SNAPSHOTS, INITIAL_POLICY_SNAPSHOTS);
     setItem(KEYS.TRANSACTION_SNAPSHOTS, INITIAL_TRANSACTION_SNAPSHOTS);
     setItem(KEYS.FINANCE_AGREEMENTS, INITIAL_FINANCE_AGREEMENTS);
-    setItem(KEYS.JOURNALS, []);
+    setItem(KEYS.JOURNALS, INITIAL_JOURNALS);
     setItem(KEYS.FISCAL_PERIODS, INITIAL_FISCAL_PERIODS);
     setItem(KEYS.POSTING_RULES, INITIAL_POSTING_RULES);
     setItem(KEYS.CHECKLIST, INITIAL_CHECKLIST_STEPS);
@@ -105,10 +118,19 @@ export function initLocalStorage(force = false) {
         amount: 9562.50,
         description: 'ACH DEPOSIT - LONE PINE TRUCKING INST #1',
         bank_reference: 'ACH-DEP-88991',
-        status: 'UNMATCHED'
+        status: 'MATCHED'
       }
     ]);
-    setItem(KEYS.MATCHES, []);
+    setItem(KEYS.MATCHES, [
+      {
+        _id: 'match-001',
+        bank_line_id: 'bl-001',
+        payment_id: 'pmt-001',
+        matched_amount: 9562.50,
+        status: 'RECONCILED'
+      }
+    ]);
+    localStorage.setItem('veridex_seed_version', SEED_DATA_VERSION);
     setItem(KEYS.COMMISSIONS, [
       {
         _id: 'comm-001',
@@ -377,6 +399,11 @@ export const localStorageEngine = {
 
   // Counterparties
   getParties: () => ({ success: true, data: getItem(KEYS.COUNTERPARTIES, INITIAL_COUNTERPARTIES) }),
+
+  seedParties: () => {
+    setItem(KEYS.COUNTERPARTIES, INITIAL_COUNTERPARTIES);
+    return { success: true, data: INITIAL_COUNTERPARTIES };
+  },
 
   createParty: (payload) => {
     const parties = getItem(KEYS.COUNTERPARTIES, INITIAL_COUNTERPARTIES);
