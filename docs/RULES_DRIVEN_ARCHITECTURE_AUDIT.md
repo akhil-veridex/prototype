@@ -92,7 +92,7 @@ However, an inspection of the domain services reveals that all line configuratio
     sourceModule: 'COMMISSIONS_FIDUCIARY',
     lines: [
       { account_code: '2010', debit: netDue.toFixed(2), credit: '0.00', memo: `Discharge Due to Carrier for ${...}` },
-      { account_code: '1010', debit: '0.00', credit: netDue.toFixed(2), memo: 'Disbursement from Texas § 4053 Premium Trust' }
+      { account_code: '1010', debit: '0.00', credit: netDue.toFixed(2), memo: 'Disbursement from Texas & 4053 Premium Trust' }
     ]
   });
   ```

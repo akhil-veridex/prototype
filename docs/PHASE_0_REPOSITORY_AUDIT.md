@@ -68,7 +68,7 @@ This audit establishes the baseline for building the developer-ready, modular, m
    - *Resolution:* Nina's 7-step checklist is explicitly implemented as sequential tasks:
      1. Subledger Reconciliation (AR, AP, Fiduciary vs GL)
      2. UPR Amortization Recognition (Actual/365 pro-rata)
-     3. Texas § 4053 Fiduciary Escrow Audit
+     3. Texas & 4053 Fiduciary Escrow Audit
      4. Carrier & Broker Bordereau Settlement Finalization
      5. Trial Balance Invariant Check ($\sum Dr == \sum Cr$)
      6. Fiscal Period Hard Lock (`LOCKED`)

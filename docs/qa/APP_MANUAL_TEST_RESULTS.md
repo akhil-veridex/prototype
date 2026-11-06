@@ -106,7 +106,7 @@ Automated test runner executed via `node backend/tests/qa_manual_happy_flow_crud
 | :--- | :--- | :--- | :--- | :--- | :---: |
 | `QA-FLOW-MGA-01` | Agency Invoice Split Journal | `POST /billing/invoices` ($10,000) | HTTP 201, 4-line split JE (Carrier/Broker/MGA) | HTTP 201, balanced 4-line JE | **PASS** |
 | `QA-FLOW-MGA-02` | Trust Cash Receipt (§ 4053) | `POST /billing/payments` ($10,000 Wire) | HTTP 201, Dr 1010 Trust / Cr 1100 AR | HTTP 201, trust cash debited | **PASS** |
-| `QA-FLOW-MGA-03` | Texas § 4053 Fiduciary Sweep | `POST /commissions/sweeps/execute` ($500) | HTTP 200, Dr 1000 / Cr 1010 posted | HTTP 200, earned commission swept | **PASS** |
+| `QA-FLOW-MGA-03` | Texas & 4053 Fiduciary Sweep | `POST /commissions/sweeps/execute` ($500) | HTTP 200, Dr 1000 / Cr 1010 posted | HTTP 200, earned commission swept | **PASS** |
 | `QA-FLOW-MGA-04` | Fiduciary Over-Sweep Guard | `POST /commissions/sweeps/execute` ($100) | HTTP 400 Rejecting sweep > earned commission | HTTP 400, over-sweep blocked | **PASS** |
 | `QA-FLOW-MGA-05` | MGA Trial Balance Certification | `GET /close/trial-balance` | HTTP 200, `is_balanced: true` ($0 variance) | HTTP 200, `is_balanced: true` | **PASS** |
 

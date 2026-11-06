@@ -23,7 +23,7 @@
 | Code | Account Name | Type | Normal Balance | Posting Allowed | Usage / Scope |
 | :--- | :--- | :--- | :--- | :---: | :--- |
 | `1000` | MGA Operating Cash (Chase Bank) | ASSET | DEBIT | YES | Unrestricted commercial operating depository |
-| `1010` | Texas Statutory Premium Trust Account | ASSET | DEBIT | YES | Segregated fiduciary trust account under Texas § 4053 |
+| `1010` | Texas Statutory Premium Trust Account | ASSET | DEBIT | YES | Segregated fiduciary trust account under Texas & 4053 |
 | `1100` | Agency Premium Receivable | ASSET | DEBIT | YES | Control account for producing broker statement invoices |
 | `2010` | Due to Insurance Carrier (Fiduciary) | LIABILITY | CREDIT | YES | Net fiduciary liability owed to underwriting carrier |
 | `2020` | Broker Commissions Payable | LIABILITY | CREDIT | YES | Fiduciary liability owed to producing retail broker |
@@ -31,7 +31,7 @@
 
 ### 2.2 Fiduciary Account Configuration
 - **Account Code:** `FID-TX-TRUST-01`
-- **Account Name:** Frost Bank Texas § 4053 Statutory Premium Trust
+- **Account Name:** Frost Bank Texas & 4053 Statutory Premium Trust
 - **Account Type:** `PREMIUM_TRUST`
 - **Jurisdiction Statute:** `TEXAS_INS_CODE_4053`
 - **GL Account Code:** `1010`
@@ -114,7 +114,7 @@ curl -X POST http://localhost:5050/api/v1/billing/invoices \
 ---
 
 ### Step M-2: Receive Broker Premium into Fiduciary Trust Cash
-- **Action:** Record broker wire receipt of `$10,000.00` into Texas § 4053 Fiduciary Trust Account.
+- **Action:** Record broker wire receipt of `$10,000.00` into Texas & 4053 Fiduciary Trust Account.
 - **UI Navigation:** Billing Workspace $\to$ Payments $\to$ "+ Receive Payment".
 - **API Call:** `POST /api/v1/billing/payments`
 ```bash
@@ -157,7 +157,7 @@ curl -X POST http://localhost:5050/api/v1/commissions/sweeps/execute \
   -d '{
     "fiduciary_account_id": "<FIDUCIARY_ACCOUNT_ID>",
     "amount": "500.00",
-    "notes": "MGA July earned override sweep [Texas § 4053]"
+    "notes": "MGA July earned override sweep [Texas & 4053]"
   }'
 ```
 - **Emitted Event:** `fiduciary.sweep.executed`

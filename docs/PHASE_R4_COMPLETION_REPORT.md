@@ -112,7 +112,7 @@ All legacy and architectural acceptance suites were executed sequentially agains
 
 To verify persona workflows without contaminating the database with automatic business data seeding, three comprehensive manual testing guides were produced:
 - `docs/testing/CARRIER_MANUAL_TEST_DATA_AND_EXPECTED_JE.md`: Carrier persona manual verification pack (Direct bill installment invoicing, premium recognition, fiduciary trust accounting, ASC 944 monthly earning).
-- `docs/testing/MGA_MANUAL_TEST_DATA_AND_EXPECTED_JE.md`: MGA persona manual verification pack (Agency bill, fiduciary sweep of 20% earned commission, Texas § 4053 statutory compliance, net carrier bordereau settlement).
+- `docs/testing/MGA_MANUAL_TEST_DATA_AND_EXPECTED_JE.md`: MGA persona manual verification pack (Agency bill, fiduciary sweep of 20% earned commission, Texas & 4053 statutory compliance, net carrier bordereau settlement).
 - `docs/testing/BROKER_MANUAL_TEST_DATA_AND_EXPECTED_JE.md`: Broker persona manual verification pack (Commission payable settlement, 70/30 internal producer split, client receivables, operating cash sweep).
 
 ---

@@ -87,7 +87,7 @@ flowchart TD
     Split -->|Cr Due to Carrier 2010| C85["85% ($8,500)"]
     Split -->|Cr Broker Payable 2020| B10["10% ($1,000)"]
     Split -->|Cr MGA Revenue 4000| M5["5% ($500)"]
-    Wire["Agency Wire Receipt<br/>$10,000.00"] -->|Dr Trust Cash 1010 / Cr AR 1100| Trust["Texas § 4053 Trust (1010)"]
+    Wire["Agency Wire Receipt<br/>$10,000.00"] -->|Dr Trust Cash 1010 / Cr AR 1100| Trust["Texas & 4053 Trust (1010)"]
     Trust -->|Dr 1000 / Cr 1010 $500| Sweep["Fiduciary Sweep ($500)"]
     Trust -->|Dr 2010 / Cr 1010 $8,500| Remit["Carrier Settlement ($8,500)"]
 ```

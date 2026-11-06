@@ -68,7 +68,7 @@ All cross-module invariants—single recognition of written premium, 4-pay insta
 - **Receipt Reference:** `ACH-TRACE-LPT-8821`
 - **Payment Number:** `PAY-2026-00001`
 - **Amount Received:** \$9,562.50
-- **Destination:** Texas § 4053 Fiduciary Premium Trust (`Frost Bank *9941`)
+- **Destination:** Texas & 4053 Fiduciary Premium Trust (`Frost Bank *9941`)
 - **Posted Journal:** `JE-2026-00002` (ID: `6acd2df40ea46d2e6490958f`)
 - **Double-Entry Impact:**
   - Debit `1010 Premium Trust Bank`: **\$9,562.50**
@@ -196,6 +196,6 @@ Frontend verification via `cmd.exe /c "npm run build"` succeeded in 2.05s with 0
 
 1. **Single Recognition of Premium:** Written premium is recorded once at inception. Installment invoice generation does not duplicate `1100 AR` or `2200 UPR`.
 2. **Actual/365 ASC 944 Earning:** July exposure calculates to exactly \$3,197.67, with \$34,452.33 ending unearned reserve.
-3. **Texas § 4053 Trust Segregation:** Premium collections route to Account `1010`. Operating sweeps require earned MGA status and are capped by available funds.
+3. **Texas & 4053 Trust Segregation:** Premium collections route to Account `1010`. Operating sweeps require earned MGA status and are capped by available funds.
 4. **Hard-Close Period Lock:** The 7-step close sequence moves the period to `HARD_CLOSED`, blocking backdated journal postings.
 5. **Mathematical Equilibrium:** All posted journals and trial balance snapshots satisfy $\sum \text{Debits} == \sum \text{Credits}$.

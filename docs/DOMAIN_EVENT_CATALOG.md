@@ -205,7 +205,7 @@ Each event follows strict semantic versioning, JSON Schema draft-07 validation, 
 ```
 
 #### 2.3.2 `fiduciary.sweep.executed`
-- **Description:** Emitted when statutory earned commissions are swept from the Texas § 4053 Fiduciary Premium Trust to Operating Cash.
+- **Description:** Emitted when statutory earned commissions are swept from the Texas & 4053 Fiduciary Premium Trust to Operating Cash.
 - **Producer:** `commissionsService.js` $\to$ `executeFiduciarySweep()`
 - **Consumer:** `JE_RULES_CONSUMER`
 - **Creates Journal:** **Yes** (Dr Operating Cash, Cr Premium Trust Cash)

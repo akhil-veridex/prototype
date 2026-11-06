@@ -48,7 +48,7 @@ Every invoice issue, cash receipt, and fee adjustment integrates directly with t
    *(Status: `ISSUED`, Journal `JE-2026-00001`)*
 
 2. **Customer Cash Receipt ($9,412.50 via ACH):**
-   - **Dr 1010 Premium Trust Cash (Texas § 4053 Segregated):** $9,412.50
+   - **Dr 1010 Premium Trust Cash (Texas & 4053 Segregated):** $9,412.50
    - **Cr 1100 Premium Receivable:** $9,412.50
    *(Waterfall allocation clears oldest receivable; Invoice #1 balance reduced to $150.00; Status: `PARTIALLY_PAID`, Journal `JE-2026-00002`)*
 

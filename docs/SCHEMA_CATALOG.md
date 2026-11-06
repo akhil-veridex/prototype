@@ -78,7 +78,7 @@
 | `ProfitCommissionSchedule` | `profit_commission_schedules` | Annual loss-ratio contingent bonus rules | `agreement_id`, `loss_ratio_threshold`, `bonus_pct` |
 | `CommissionSplit` | `commission_splits` | Multi-tier participant split definition | `schedule_id`, `party_id`, `party_role`, `split_percentage`, `priority_order` |
 | `CommissionTransaction` | `commission_transactions` | Earned/accrued commission ledger record | `policy_id`, `party_id`, `premium_basis`, `rate_applied`, `commission_amount`, `status` |
-| `FiduciaryAccount` | `fiduciary_accounts` | Texas § 4053 segregated trust bank profile | `account_name`, `bank_name`, `account_number`, `escrow_hold_days`, `balance` |
+| `FiduciaryAccount` | `fiduciary_accounts` | Texas & 4053 segregated trust bank profile | `account_name`, `bank_name`, `account_number`, `escrow_hold_days`, `balance` |
 | `BordereauDefinition` | `bordereau_definitions` | Monthly carrier report format specification | `carrier_id`, `bordereau_type`, `frequency` |
 | `BordereauRun` | `bordereau_runs` | Executed monthly carrier remittance run | `period_name`, `total_gross_premium`, `total_net_carrier_premium`, `total_commissions`, `status` |
 | `BordereauLine` | `bordereau_lines` | Policy-level itemized bordereau entry | `run_id`, `policy_id`, `gross_premium`, `mga_commission`, `net_due_carrier` |

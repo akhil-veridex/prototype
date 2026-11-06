@@ -19,7 +19,7 @@ Debits equal credits ($\$75,450.00 == \$75,450.00$), but **two major accounting 
 1. **Defect 1: Phantom Escrow Asset (\$33,885.00 in Account `1020`)**  
    The commission recognition journal posted a \$33,885.00 debit to Account `1020 Cash - Claims Escrow Account` simply to force double-entry balance against Carrier Payable (`2010`) and Broker Payable (`2020`). Account `1020` is a bank cash asset account; recognizing an asset of \$33,885.00 when no cash was received or deposited into escrow creates a fictitious asset on the Balance Sheet.
 2. **Defect 2: Premature & Over-Extended Fiduciary Sweep (\$3,765.00 vs \$753.00 Collected)**  
-   Under Texas Insurance Code § 4053 and insurance agency fiduciary trust principles, an MGA is strictly prohibited from sweeping uncollected or unearned commissions out of trust funds. For Installment 1, only \$9,562.50 was billed and collected (\$9,412.50 premium). Harbor's 10% retained commission on the *collected* cash is only **\$941.25** (or **\$753.00** on 25% down payment). Sweeping the full annual retained commission (\$3,765.00) sweeps \$3,012.00 of funds that belong to Summit Mutual or represent future installments, breaching Texas § 4053 fiduciary trust segregation.
+   Under Texas Insurance Code § 4053 and insurance agency fiduciary trust principles, an MGA is strictly prohibited from sweeping uncollected or unearned commissions out of trust funds. For Installment 1, only \$9,562.50 was billed and collected (\$9,412.50 premium). Harbor's 10% retained commission on the *collected* cash is only **\$941.25** (or **\$753.00** on 25% down payment). Sweeping the full annual retained commission (\$3,765.00) sweeps \$3,012.00 of funds that belong to Summit Mutual or represent future installments, breaching Texas & 4053 fiduciary trust segregation.
 
 ---
 
@@ -35,7 +35,7 @@ The database was inspected directly using MongoDB queries against tenant `LONE_P
   Total: Dr $37,800.00 == Cr $37,800.00
 
 [JE-2026-00002] Source: BILLING_PAYMENT | Ref: PAY-ACH-2026-001 | Status: POSTED
-  1010 Premium Trust Bank (Texas § 4053)      Dr: $9,562.50    Cr: $0.00
+  1010 Premium Trust Bank (Texas & 4053)      Dr: $9,562.50    Cr: $0.00
   1100 Premium Receivable                     Dr: $0.00        Cr: $9,562.50
   Total: Dr $9,562.50 == Cr $9,562.50
 
@@ -49,7 +49,7 @@ The database was inspected directly using MongoDB queries against tenant `LONE_P
 
 [JE-2026-00004] Source: COMMISSIONS_FIDUCIARY | Ref: SWEEP-1791832916102 | Status: POSTED
   1000 Operating Cash                         Dr: $3,765.00    Cr: $0.00     <--- FIDUCIARY BREACH
-  1010 Premium Trust Bank (Texas § 4053)      Dr: $0.00        Cr: $3,765.00
+  1010 Premium Trust Bank (Texas & 4053)      Dr: $0.00        Cr: $3,765.00
   Total: Dr $3,765.00 == Cr $3,765.00
 
 [JE-2026-00005] Source: FINANCE_CLOSE | Ref: UPR-POL-TX-8821-2026-07 | Status: POSTED
@@ -114,7 +114,7 @@ const approvedMGACommissions = await CommissionTransaction.find({
 // Checks: sweepAmount <= currentTrustBalance ($3,765.00 <= $9,562.50) -> PASS
 ```
 
-### 4.2 Why This Breaches Texas § 4053 Fiduciary Law
+### 4.2 Why This Breaches Texas & 4053 Fiduciary Law
 1. **The Cash Reality:** Customer Lone Pine Trucking paid Installment 1 (\$9,562.50). Out of this \$9,562.50:
    - Policy Fee: \$150.00
    - Down Payment Premium: \$9,412.50 (25% of annual premium)
