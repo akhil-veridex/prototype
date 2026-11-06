@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { authApi, counterpartiesApi, rulesApi } from '../services/api';
 import {
   Receipt,
@@ -27,7 +27,9 @@ import {
   Power,
   Sparkles,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import ModalClose from '../components/ModalClose';
 
@@ -82,6 +84,47 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showEndorsementModal, setShowEndorsementModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+
+  // Multi-schedule in-table accordion & Plan breakdown states
+  const [expandedPolicies, setExpandedPolicies] = useState({ 'POL-TX-8821': true });
+  const [expandedInstallmentId, setExpandedInstallmentId] = useState(null);
+
+  const togglePolicyExpand = (policyNum) => {
+    setExpandedPolicies((prev) => ({
+      ...prev,
+      [policyNum]: !prev[policyNum]
+    }));
+  };
+
+  // Group schedules by policy so users can view installment schedules directly in the table
+  const policyGroups = useMemo(() => {
+    const map = {};
+    schedules.forEach((s) => {
+      const pNum = s.policy_number || s.policy_id || 'UNKNOWN';
+      if (!map[pNum]) {
+        map[pNum] = {
+          policy_number: pNum,
+          customer_name: s.billing_account_id?.customer_name || s.customer_name || 'Insured Customer',
+          account_number: s.billing_account_id?.account_number || '',
+          installments: [],
+          total_premium: 0,
+          total_fee: 0,
+          total_amount: 0,
+          paid_count: 0,
+          billed_count: 0,
+          scheduled_count: 0
+        };
+      }
+      map[pNum].installments.push(s);
+      map[pNum].total_premium += Number(s.premium_amount || s.premium || 0);
+      map[pNum].total_fee += Number(s.fee_amount || s.fee || 0);
+      map[pNum].total_amount += Number(s.total_amount || s.total_due || 0);
+      if (s.status === 'PAID') map[pNum].paid_count++;
+      else if (s.status === 'BILLED') map[pNum].billed_count++;
+      else map[pNum].scheduled_count++;
+    });
+    return Object.values(map);
+  }, [schedules]);
 
   const [endorsementForm, setEndorsementForm] = useState({
     billing_account_id: '',
@@ -144,40 +187,6 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
     { account_code: '1010', debit: '9562.50', credit: '0.00', memo: 'Dr 1010 Texas Premium Trust' },
     { account_code: '1100', debit: '0.00', credit: '9562.50', memo: 'Cr 1100 AR (Waterfall Cleared)' }
   ]);
-
-  const [adjustmentForm, setAdjustmentForm] = useState({
-    billing_account_id: '',
-    adjustment_type: 'FEE_WAIVER',
-    amount: '150.00',
-    reason_code: 'BROKER_RELATIONSHIP',
-    reason_description: 'Courtesy fee waiver for Lone Pine Trucking'
-  });
-
-  const [newSnapshotForm, setNewSnapshotForm] = useState({
-    policy_number: 'POL-TX-9902',
-    source_entity_id: 'POL-TX-9902',
-    source_version: 'v1.0',
-    effective_date: '2026-07-01',
-    expiration_date: '2027-07-01',
-    line_of_business: 'COMMERCIAL_AUTO',
-    total_premium: '45000.00',
-    total_fees: '250.00',
-    total_taxes: '0.00',
-    status: 'BOUND',
-    payer_party_id: '',
-    insured_party_id: '',
-    carrier_party_id: ''
-  });
-
-  const [newFinanceForm, setNewFinanceForm] = useState({
-    billing_account_id: '',
-    finance_company_party_id: '',
-    agreement_number: 'PFA-TX-2026-001',
-    amount_financed: '28237.50',
-    down_payment: '9412.50',
-    interest_rate: '8.50',
-    notes: 'Imperial PFS Texas Commercial Auto Financing'
-  });
 
   const handlePaymentJournalLineChange = (index, field, value) => {
     setPaymentJournalLines((prev) => {
@@ -243,7 +252,7 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
 
   const defaultCOA = [
     { account_code: '1000', account_name: 'Operating Cash', account_type: 'ASSET' },
-    { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', account_type: 'ASSET' },
+    { account_code: '1010', account_name: 'Premium Trust Bank (Texas & 4053)', account_type: 'ASSET' },
     { account_code: '1020', account_name: 'Cash - Claims Escrow Account', account_type: 'ASSET' },
     { account_code: '1100', account_name: 'Premium Receivable', account_type: 'ASSET' },
     { account_code: '2010', account_name: 'Due to Carrier', account_type: 'LIABILITY' },
@@ -314,6 +323,40 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
       ['ISSUED', 'PARTIALLY_PAID'].includes(i.status) &&
       parseDecimalValue(i.balance_due) > 0
   );
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    billing_account_id: '',
+    adjustment_type: 'FEE_WAIVER',
+    amount: '150.00',
+    reason_code: 'BROKER_RELATIONSHIP',
+    reason_description: 'Courtesy fee waiver for Lone Pine Trucking'
+  });
+
+  const [newSnapshotForm, setNewSnapshotForm] = useState({
+    policy_number: 'POL-TX-9902',
+    source_entity_id: 'POL-TX-9902',
+    source_version: 'v1.0',
+    effective_date: '2026-07-01',
+    expiration_date: '2027-07-01',
+    line_of_business: 'COMMERCIAL_AUTO',
+    total_premium: '45000.00',
+    total_fees: '250.00',
+    total_taxes: '0.00',
+    status: 'BOUND',
+    payer_party_id: '',
+    insured_party_id: '',
+    carrier_party_id: ''
+  });
+
+  const [newFinanceForm, setNewFinanceForm] = useState({
+    billing_account_id: '',
+    finance_company_party_id: '',
+    agreement_number: 'PFA-TX-2026-001',
+    amount_financed: '28237.50',
+    down_payment: '9412.50',
+    interest_rate: '8.50',
+    notes: 'Imperial PFS Texas Commercial Auto Financing'
+  });
+
   const formatMoney = (val) => {
     if (val === null || val === undefined) return '0.00';
     if (typeof val === 'object' && val.$numberDecimal) return Number(val.$numberDecimal).toFixed(2);
@@ -602,20 +645,6 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
     }
   };
 
-  // Handle Seed Posting Rules (Auto-Seed 12 Master Insurance Rules)
-  const handleSeedPostingRules = async () => {
-    try {
-      setLoading(true);
-      const res = await rulesApi.seedRules();
-      setSuccess(res.message || 'Master insurance posting rules seeded successfully');
-      await loadData();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Handle Policy Snapshot Ingestion (Module 35)
   const handleCreateSnapshot = async (e) => {
     e.preventDefault();
@@ -646,9 +675,13 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
   const handleGenerateSchedule = async (e) => {
     e.preventDefault();
     try {
+      const policyNum = scheduleForm.policy_number || scheduleForm.policy_id;
       await authApi.generateSchedule(scheduleForm);
       setSuccess('Policy bound & 4-pay installment schedule generated successfully! Review scheduled installments below.');
       setShowGenerateScheduleModal(false);
+      if (policyNum) {
+        setExpandedPolicies((prev) => ({ ...prev, [policyNum]: true }));
+      }
       setSubtab('schedules');
       loadData();
     } catch (err) {
@@ -694,7 +727,7 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
     }
   };
 
-  
+
   const handleRepairGL = async () => {
     try {
       setLoading(true);
@@ -773,10 +806,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
       setInvoices(freshInvoices);
       if (freshAccounts.length > 0) setAccounts(freshAccounts);
 
-      const targetAccId = targetInv?.billing_account_id?._id || 
-                          targetInv?.billing_account_id || 
-                          paymentForm.billing_account_id || 
-                          (freshAccounts[0]?._id || (accounts[0]?._id || ''));
+      const targetAccId = targetInv?.billing_account_id?._id ||
+        targetInv?.billing_account_id ||
+        paymentForm.billing_account_id ||
+        (freshAccounts[0]?._id || (accounts[0]?._id || ''));
 
       const openInvs = freshInvoices.filter(
         (i) =>
@@ -912,7 +945,7 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Installment schedules, invoices, waterfall cash allocation, Texas § 4053 fiduciary receipts, and GL synchronization.
+            Installment schedules, invoices, waterfall cash allocation, Texas & 4053 fiduciary receipts, and GL synchronization.
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -947,36 +980,6 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
         </div>
       )}
 
-      {/* Posting Rules Status Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center space-x-2">
-          <Sliders className="w-4 h-4 text-brand-400" />
-          <span className="font-semibold text-slate-200">GL Posting Rules Engine:</span>
-          {publishedRules.length > 0 ? (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>{publishedRules.length} Active Rules Linked</span>
-            </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center space-x-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-              <span>0 Rules Seeded (Required for GL Journal Entries)</span>
-            </span>
-          )}
-          <span className="text-[11px] text-slate-400 hidden lg:inline">
-            (RULE_INV_ISSUE, RULE_PMT_RECEIVED, RULE_COMMISSION_ALLOCATED, RULE_ADJ_APPLIED, etc.)
-          </span>
-        </div>
-        <button
-          onClick={handleSeedPostingRules}
-          disabled={loading}
-          className="flex items-center space-x-1.5 px-3 py-1 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/40 rounded text-xs font-semibold transition"
-          title="Seed master double-entry posting rules into tenant database"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-          <span>{publishedRules.length === 0 ? '⚡ Auto-Seed Master Posting Rules' : '⚡ Sync / Re-Seed Master Rules'}</span>
-        </button>
-      </div>
 
       {/* Navigation Subtabs */}
       <div className={`flex border-b border-slate-800 space-x-1 ${section ? 'hidden' : ''}`}>
@@ -1000,11 +1003,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 setSuccess(null);
                 setError(null);
               }}
-              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-medium border-b-2 transition ${
-                isActive
+              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-medium border-b-2 transition ${isActive
                   ? 'border-brand-500 text-brand-400 bg-brand-500/5'
                   : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
@@ -1105,7 +1107,7 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-white">Policy Installment Schedules (4-Pay Lifecycle)</h3>
+              <h3 className="text-sm font-semibold text-white">Policy Installment Schedules </h3>
               <p className="text-xs text-slate-400">
                 Payment plans generated upon policy binding. Issue invoices against scheduled installments when due.
               </p>
@@ -1118,49 +1120,18 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 <Plus className="w-3.5 h-3.5" />
                 <span>Bind Policy & Schedule</span>
               </button>
-                            <button
-                type="button"
-                onClick={handleRepairGL}
-                disabled={loading}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded text-xs font-semibold transition cursor-pointer"
-                title="Audit and automatically post missing double-entry GL journals for invoices and reconcile COA"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-brand-400" />
-                <span>Reconcile Invoice GL</span>
-              </button>
-<button
-                onClick={() => setShowEndorsementModal(true)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-semibold shadow transition"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>+ Apply Policy Endorsement (Scenario 2)</span>
-              </button>
-              <button
-                onClick={handleResetEndorsement}
-                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded text-xs border border-slate-700 transition"
-                title="Reset to Base Policy (Pre-Endorsement)"
-              >
-                Reset Endorsement
-              </button>
-              <button
-                onClick={loadData}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition"
-                title="Refresh Schedules"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
             </div>
           </div>
 
-          {/* Quick Stats Banner if schedules exist */}
+          {/* Quick Stats Banner */}
           {schedules.length > 0 && (
             <div className="grid grid-cols-4 gap-3">
               <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
-                <div className="text-[10px] text-slate-400 uppercase font-mono">Total Scheduled Plan</div>
+                <div className="text-[10px] text-slate-400 uppercase font-mono">Total Scheduled Plans</div>
                 <div className="text-lg font-bold font-mono text-white mt-0.5">
                   ${schedules.reduce((acc, s) => acc + Number(formatMoney(s.total_amount)), 0).toFixed(2)}
                 </div>
-                <div className="text-[10px] text-slate-500">{schedules.length} Installments</div>
+                <div className="text-[10px] text-slate-500">{schedules.length} Installments • {policyGroups.length} Policies</div>
               </div>
               <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
                 <div className="text-[10px] text-amber-400 uppercase font-mono">Pending Invoicing</div>
@@ -1179,9 +1150,9 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
               <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
                 <div className="text-[10px] text-blue-400 uppercase font-mono">Deposit (#1) Status</div>
                 <div className="text-lg font-bold font-mono text-blue-400 mt-0.5">
-                  {schedules[0] ? schedules[0].status : 'N/A'}
+                  {schedules.filter(s => s.installment_number === 1 && s.status === 'PAID').length}/{policyGroups.length} Paid
                 </div>
-                <div className="text-[10px] text-slate-500">25% Down + $150 Fee</div>
+                <div className="text-[10px] text-slate-500">25% Down Payments Secured</div>
               </div>
             </div>
           )}
@@ -1190,131 +1161,308 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-850 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800">
                 <tr>
-                  <th className="p-3">Installment</th>
-                  <th className="p-3">Policy Number</th>
+                  <th className="p-3">Policy / Schedule</th>
                   <th className="p-3">Customer / Account</th>
-                  <th className="p-3">Due Date</th>
-                  <th className="p-3">Premium</th>
-                  <th className="p-3">Fee</th>
+                  <th className="p-3">Billing Plan</th>
+                  <th className="p-3">Due Date Range</th>
                   <th className="p-3">Total Due</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Invoice Link</th>
+                  <th className="p-3">Billing Status</th>
                   <th className="p-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 font-mono">
-                {schedules.length === 0 ? (
+                {policyGroups.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="p-8 text-center text-slate-500 font-sans space-y-2">
+                    <td colSpan="7" className="p-8 text-center text-slate-500 font-sans space-y-2">
                       <div>No installment schedules generated yet.</div>
                       <div className="text-xs text-slate-600">
-                        Click "1. Bind Policy & Generate 4-Pay Schedule" in AR Overview to create the payment plan.
+                        Click "Bind Policy & Schedule" above to create a payment plan.
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  schedules.map((sched) => {
-                    const isDeposit = sched.installment_number === 1;
-                    const isBilled = sched.status === 'BILLED' || sched.invoice_id;
+                  policyGroups.map((group) => {
+                    const isExpanded = !!expandedPolicies[group.policy_number];
+                    const firstDue = group.installments[0]?.due_date;
+                    const lastDue = group.installments[group.installments.length - 1]?.due_date;
+                    const allBilled = group.scheduled_count === 0;
                     return (
-                      <tr key={sched._id} className="hover:bg-slate-850/50 transition">
-                        <td className="p-3">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="font-bold text-white">#{sched.installment_number}</span>
-                            {isDeposit && (
-                              <span className="px-1.5 py-0.5 text-[9px] bg-brand-500/20 text-brand-300 rounded font-sans border border-brand-500/30">
-                                Down Payment
+                      <React.Fragment key={group.policy_number}>
+                        {/* Parent Policy Schedule Row */}
+                        <tr
+                          onClick={() => togglePolicyExpand(group.policy_number)}
+                          className={`cursor-pointer transition ${
+                            isExpanded ? 'bg-slate-850/80 border-b border-slate-750' : 'hover:bg-slate-850/40'
+                          }`}
+                          title="Click to expand/collapse installments directly in table"
+                        >
+                          <td className="p-3">
+                            <div className="flex items-center space-x-2">
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 text-brand-400 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
+                              )}
+                              <span className="font-bold text-white text-sm">{group.policy_number}</span>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-brand-500/10 text-brand-400 border border-brand-500/20 font-semibold">
+                                {group.installments.length}-Pay
                               </span>
+                            </div>
+                          </td>
+                          <td className="p-3 font-sans">
+                            <div className="font-semibold text-slate-200">{group.customer_name}</div>
+                            {group.account_number && (
+                              <div className="text-[10px] text-slate-500 font-mono">{group.account_number}</div>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-3 font-semibold text-slate-200">
-                          <div>{sched.policy_number || sched.policy_id}</div>
-                          <div className="flex flex-wrap items-center gap-1 mt-1">
-                            {sched.billing_policy_snapshot_id && (
+                          </td>
+                          <td className="p-3 font-sans text-slate-300">
+                            <div>4-Pay 25% Down</div>
+                            <div className="text-[10px] text-slate-500">Quarterly Cadence</div>
+                          </td>
+                          <td className="p-3 text-slate-400 font-sans text-[11px]">
+                            {firstDue ? new Date(firstDue).toLocaleDateString() : 'N/A'} – {lastDue ? new Date(lastDue).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="p-3 text-white font-bold text-sm">
+                            ${group.total_amount.toFixed(2)}
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              ${group.total_premium.toFixed(2)} Prem + ${group.total_fee.toFixed(2)} Fee
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center space-x-1.5">
                               <span
-                                className="px-1.5 py-0.2 text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-mono"
-                                title="Module 35 BillingPolicySnapshot Reference (Physical ERD v4.6 Page 14/37)"
+                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium ${
+                                  allBilled
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                }`}
                               >
-                                Snap: {String(sched.billing_policy_snapshot_id).slice(-8)}
+                                {group.paid_count + group.billed_count}/{group.installments.length} Invoiced
                               </span>
-                            )}
-                            {sched.billing_transaction_snapshot_id && (
-                              <span
-                                className="px-1.5 py-0.2 text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded font-mono"
-                                title="Module 35 BillingTransactionSnapshot Reference"
-                              >
-                                Tx: {String(sched.billing_transaction_snapshot_id).slice(-8)}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3 font-sans text-slate-300">
-                          {sched.billing_account_id ? sched.billing_account_id.customer_name : 'Lone Pine Trucking LLC'}
-                        </td>
-                        <td className="p-3 text-slate-400">
-                          {new Date(sched.due_date).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 text-slate-200">
-                          <div>${formatMoney(sched.premium_amount)}</div>
-                          {sched.dimensions?.endorsement_delta && (
-                            <span className="inline-block mt-0.5 px-1.5 py-0.2 text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded font-sans">
-                              +T5 Delta: +${sched.dimensions.endorsement_delta}
-                            </span>
-                          )}
-                          {sched.dimensions?.standalone_endorsement && (
-                            <span className="inline-block mt-0.5 px-1.5 py-0.2 text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-sans">
-                              Standalone T5 Endorsement
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-slate-400">${formatMoney(sched.fee_amount)}</td>
-                        <td className="p-3 text-white font-bold">${formatMoney(sched.total_amount)}</td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                              sched.status === 'PAID'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : sched.status === 'BILLED'
-                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}
-                          >
-                            {sched.status === 'SCHEDULED' ? 'SCHEDULED (UNBILLED)' : sched.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-400">
-                          {sched.invoice_id ? (
+                              {group.paid_count > 0 && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-sans bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  Deposit Paid
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
-                              onClick={() => setSubtab('invoices')}
-                              className="text-brand-400 hover:underline font-mono text-[11px]"
+                              type="button"
+                              onClick={() => togglePolicyExpand(group.policy_number)}
+                              className={`px-3 py-1.5 rounded text-xs font-semibold inline-flex items-center space-x-1.5 border transition ${
+                                isExpanded
+                                  ? 'bg-brand-500/20 text-brand-300 border-brand-500/40 hover:bg-brand-500/30'
+                                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-750'
+                              }`}
                             >
-                              {sched.invoice_id.invoice_number || 'View Invoice'}
+                              <span>{isExpanded ? 'Hide Installments' : `View Installments (${group.installments.length})`}</span>
+                              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                             </button>
-                          ) : (
-                            <span className="text-slate-500 font-sans text-[11px]">Not yet issued</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          {!isBilled ? (
-                            <button
-                              onClick={() => handleOpenInvoiceForSchedule(sched)}
-                              className="px-2.5 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded text-[11px] font-sans inline-flex items-center space-x-1 font-semibold transition"
-                            >
-                              <FileText className="w-3 h-3" />
-                              <span>⚡ Issue Invoice</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setSubtab('invoices')}
-                              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-sans inline-flex items-center space-x-1 transition"
-                            >
-                              <Eye className="w-3 h-3" />
-                              <span>View in Invoices</span>
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                        </tr>
+
+                        {/* Expanded In-Table Installments Table */}
+                        {isExpanded && (
+                          <tr className="bg-slate-950/70 border-b border-slate-800">
+                            <td colSpan="7" className="p-4 font-sans">
+                              <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-inner space-y-0">
+                                <div className="p-3 bg-slate-850/80 border-b border-slate-800 flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold text-white font-mono text-xs">{group.policy_number} Installment Plan Breakdown</span>
+                                    <span className="text-slate-400 text-xs">— {group.customer_name}</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                      {group.installments.length} Scheduled Installments
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 font-mono">
+                                    Plan Total: <span className="text-white font-bold">${group.total_amount.toFixed(2)}</span>
+                                  </div>
+                                </div>
+
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-slate-900 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
+                                    <tr>
+                                      <th className="p-2.5">Installment</th>
+                                      <th className="p-2.5">Due Date</th>
+                                      <th className="p-2.5">Premium</th>
+                                      <th className="p-2.5">Fee</th>
+                                      <th className="p-2.5">Total Due</th>
+                                      <th className="p-2.5">Status</th>
+                                      <th className="p-2.5">Invoice Link</th>
+                                      <th className="p-2.5 text-right">Action</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/70 font-mono">
+                                    {group.installments.map((sched) => {
+                                      const isDeposit = sched.installment_number === 1;
+                                      const isBilled = sched.status === 'BILLED' || sched.invoice_id;
+                                      const isInstExpanded = expandedInstallmentId === sched._id;
+                                      return (
+                                        <React.Fragment key={sched._id}>
+                                          <tr
+                                            onClick={() => setExpandedInstallmentId(isInstExpanded ? null : sched._id)}
+                                            className={`cursor-pointer transition ${
+                                              isInstExpanded ? 'bg-slate-800/90 ring-1 ring-brand-500/30' : 'hover:bg-slate-850/60'
+                                            }`}
+                                            title="Click to view installment plan details"
+                                          >
+                                            <td className="p-2.5">
+                                              <div className="flex items-center space-x-1.5">
+                                                {isInstExpanded ? (
+                                                  <ChevronDown className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                                                ) : (
+                                                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                                )}
+                                                <span className="font-bold text-white">#{sched.installment_number}</span>
+                                                {isDeposit && (
+                                                  <span className="px-1.5 py-0.2 text-[9px] bg-brand-500/20 text-brand-300 rounded font-sans border border-brand-500/30">
+                                                    Down Payment
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td className="p-2.5 text-slate-300">
+                                              {new Date(sched.due_date).toLocaleDateString()}
+                                            </td>
+                                            <td className="p-2.5 text-slate-200">
+                                              <div>${formatMoney(sched.premium_amount)}</div>
+                                              {sched.dimensions?.endorsement_delta && (
+                                                <span className="inline-block mt-0.5 px-1.5 py-0.2 text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded font-sans">
+                                                  +T5 Delta: +${sched.dimensions.endorsement_delta}
+                                                </span>
+                                              )}
+                                              {sched.dimensions?.standalone_endorsement && (
+                                                <span className="inline-block mt-0.5 px-1.5 py-0.2 text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-sans">
+                                                  Standalone T5 Endorsement
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className="p-2.5 text-slate-400">${formatMoney(sched.fee_amount)}</td>
+                                            <td className="p-2.5 text-white font-bold">${formatMoney(sched.total_amount)}</td>
+                                            <td className="p-2.5">
+                                              <span
+                                                className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                                                  sched.status === 'PAID'
+                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                    : sched.status === 'BILLED'
+                                                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                }`}
+                                              >
+                                                {sched.status === 'SCHEDULED' ? 'SCHEDULED (UNBILLED)' : sched.status}
+                                              </span>
+                                            </td>
+                                            <td className="p-2.5 text-slate-400" onClick={(e) => e.stopPropagation()}>
+                                              {sched.invoice_id ? (
+                                                <button
+                                                  onClick={() => setSubtab('invoices')}
+                                                  className="text-brand-400 hover:underline font-mono text-[11px]"
+                                                >
+                                                  {sched.invoice_id.invoice_number || 'View Invoice'}
+                                                </button>
+                                              ) : (
+                                                <span className="text-slate-500 font-sans text-[11px]">Not yet issued</span>
+                                              )}
+                                            </td>
+                                            <td className="p-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                              <div className="flex items-center justify-end space-x-1.5">
+                                                {!isBilled ? (
+                                                  <button
+                                                    onClick={() => handleOpenInvoiceForSchedule(sched)}
+                                                    className="px-2.5 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded text-[11px] font-sans inline-flex items-center space-x-1 font-semibold transition"
+                                                  >
+                                                    <FileText className="w-3 h-3" />
+                                                    <span>⚡ Issue Invoice</span>
+                                                  </button>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => setSubtab('invoices')}
+                                                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-sans inline-flex items-center space-x-1 transition"
+                                                  >
+                                                    <Eye className="w-3 h-3" />
+                                                    <span>View in Invoices</span>
+                                                  </button>
+                                                )}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedInstallmentId(isInstExpanded ? null : sched._id)}
+                                                  className={`px-2 py-1 rounded text-[11px] font-sans border transition ${
+                                                    isInstExpanded
+                                                      ? 'bg-brand-500/20 text-brand-300 border-brand-500/40'
+                                                      : 'bg-slate-800 hover:bg-slate-750 text-slate-400 border-slate-750 hover:text-slate-200'
+                                                  }`}
+                                                  title="Toggle Plan Details"
+                                                >
+                                                  {isInstExpanded ? 'Hide Plan' : 'Plan'}
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+
+                                          {/* Detailed Plan Terms Card */}
+                                          {isInstExpanded && (
+                                            <tr className="bg-slate-950/90 border-b border-slate-800">
+                                              <td colSpan="8" className="p-3 font-sans">
+                                                <div className="bg-slate-850 border border-slate-750 rounded-lg p-3 space-y-2.5">
+                                                  <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-750">
+                                                    <div className="flex items-center space-x-2">
+                                                      <span className="font-semibold text-white">
+                                                        Installment #{sched.installment_number} Plan Details
+                                                      </span>
+                                                      <span className="text-slate-400">
+                                                        ({sched.policy_number} — {group.customer_name})
+                                                      </span>
+                                                    </div>
+                                                    <button
+                                                      onClick={() => setExpandedInstallmentId(null)}
+                                                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-slate-750 transition"
+                                                    >
+                                                      ✕ Close
+                                                    </button>
+                                                  </div>
+                                                  <div className="grid grid-cols-4 gap-2 text-xs">
+                                                    <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                                                      <div className="text-[10px] text-slate-500 font-mono">DUE DATE & CADENCE</div>
+                                                      <div className="font-semibold text-slate-200 mt-0.5">{new Date(sched.due_date).toLocaleDateString()}</div>
+                                                      <div className="text-[10px] text-slate-400 mt-0.5">Quarterly Schedule</div>
+                                                    </div>
+                                                    <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                                                      <div className="text-[10px] text-slate-500 font-mono">AMOUNT BREAKDOWN</div>
+                                                      <div className="font-semibold text-slate-200 mt-0.5">
+                                                        ${formatMoney(sched.premium_amount)} Premium
+                                                      </div>
+                                                      <div className="text-[10px] text-slate-400 mt-0.5">
+                                                        + ${formatMoney(sched.fee_amount)} Policy Fee = ${formatMoney(sched.total_amount)}
+                                                      </div>
+                                                    </div>
+                                                    <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                                                      <div className="text-[10px] text-slate-500 font-mono">POSTING RULE</div>
+                                                      <div className="font-semibold text-emerald-400 font-mono mt-0.5">RULE_INV_ISSUE</div>
+                                                      <div className="text-[10px] text-slate-400 mt-0.5">Dr 1100 AR / Cr 2200 UPR</div>
+                                                    </div>
+                                                    <div className="bg-slate-900 p-2 rounded border border-slate-800">
+                                                      <div className="text-[10px] text-slate-500 font-mono">INVOICING STATUS</div>
+                                                      <div className="font-semibold text-slate-200 mt-0.5">{sched.status}</div>
+                                                      <div className="text-[10px] text-slate-400 mt-0.5">
+                                                        {sched.invoice_id ? `Linked: ${sched.invoice_id.invoice_number || 'INV'}` : 'Unbilled'}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })
                 )}
@@ -1328,36 +1476,39 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
       {subtab === 'invoices' && (
         <div className="space-y-4">
           {/* Informative helper banner when schedules exist but no invoices issued yet */}
-          {invoices.length === 0 && schedules.length > 0 && (
-            <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-lg flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Calendar className="w-5 h-5 text-brand-400 shrink-0" />
-                <div>
-                  <div className="text-xs font-semibold text-brand-300">
-                    {schedules.length} Active Installment Schedules Ready for Billing
-                  </div>
-                  <div className="text-[11px] text-slate-300">
-                    Your 4-pay schedule was generated. Installment #1 (${formatMoney(schedules[0].total_amount)}) is pending invoice issuance.
+          {invoices.length === 0 && schedules.length > 0 && (() => {
+            const pendingSched = schedules.find((s) => s.status === 'SCHEDULED') || schedules[0];
+            return (
+              <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-lg flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Calendar className="w-5 h-5 text-brand-400 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-brand-300">
+                      {schedules.length} Active Installment Schedules Ready for Billing
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      Payment plan active ({pendingSched.policy_number}). Installment #{pendingSched.installment_number} (${formatMoney(pendingSched.total_amount)}) is ready for invoice issuance.
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setSubtab('schedules')}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-semibold transition"
+                  >
+                    View All Schedules
+                  </button>
+                  <button
+                    onClick={() => handleOpenInvoiceForSchedule(pendingSched)}
+                    className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-semibold flex items-center space-x-1.5 shadow transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Issue Invoice for #{pendingSched.installment_number} (${formatMoney(pendingSched.total_amount)})</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setSubtab('schedules')}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-semibold transition"
-                >
-                  View All Schedules
-                </button>
-                <button
-                  onClick={() => handleOpenInvoiceForSchedule(schedules[0])}
-                  className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-semibold flex items-center space-x-1.5 shadow transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Issue Invoice for Installment #1 (${formatMoney(schedules[0].total_amount)})</span>
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="flex items-center justify-between">
             <div className="text-xs text-slate-400">
@@ -1435,13 +1586,12 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                       <td className="p-3 text-amber-400 font-semibold">${inv.balance_due}</td>
                       <td className="p-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                            inv.status === 'PAID'
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${inv.status === 'PAID'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : inv.status === 'PARTIALLY_PAID'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          }`}
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            }`}
                         >
                           {inv.status}
                         </span>
@@ -1512,8 +1662,8 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
               </div>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              In Veridex One v4.6 architecture, the <strong>Billing module operates standalone and fully decoupled</strong> from Policy Administration (PAS). 
-              Rather than maintaining physical foreign keys directly to PAS tables, Billing ingests immutable <code>BillingPolicySnapshot</code> and <code>BillingTransactionSnapshot</code> events. 
+              In Veridex One v4.6 architecture, the <strong>Billing module operates standalone and fully decoupled</strong> from Policy Administration (PAS).
+              Rather than maintaining physical foreign keys directly to PAS tables, Billing ingests immutable <code>BillingPolicySnapshot</code> and <code>BillingTransactionSnapshot</code> events.
               Accounts and installment schedules link via <code>billing_policy_snapshot_id</code> and <code>billing_transaction_snapshot_id</code>, supporting both internal PAS feeds and external core systems (Applied Epic, Guidewire).
             </p>
           </div>
@@ -1555,33 +1705,30 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
             <div className="flex space-x-2">
               <button
                 onClick={() => setSnapshotViewMode('POLICIES')}
-                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                  snapshotViewMode === 'POLICIES'
+                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${snapshotViewMode === 'POLICIES'
                     ? 'bg-purple-600 text-white shadow'
                     : 'bg-slate-850 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 <Database className="w-3.5 h-3.5" />
                 <span>Policy Snapshots ({snapshots.length})</span>
               </button>
               <button
                 onClick={() => setSnapshotViewMode('TRANSACTIONS')}
-                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                  snapshotViewMode === 'TRANSACTIONS'
+                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${snapshotViewMode === 'TRANSACTIONS'
                     ? 'bg-blue-600 text-white shadow'
                     : 'bg-slate-850 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 <Code className="w-3.5 h-3.5" />
                 <span>Transaction Snapshots ({transactionSnapshots.length})</span>
               </button>
               <button
                 onClick={() => setSnapshotViewMode('FINANCE')}
-                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                  snapshotViewMode === 'FINANCE'
+                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${snapshotViewMode === 'FINANCE'
                     ? 'bg-amber-600 text-white shadow'
                     : 'bg-slate-850 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Premium Finance Agreements ({financeAgreements.length})</span>
@@ -1937,11 +2084,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                         <td className="p-3 font-sans text-slate-300 font-medium">{acc.customer_name}</td>
                         <td className="p-3 font-sans text-slate-400">{payerName}</td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                            billType === 'AGENCY_BILL'
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${billType === 'AGENCY_BILL'
                               ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
                               : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                          }`}>
+                            }`}>
                             {billType}
                           </span>
                         </td>
@@ -1985,81 +2131,117 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plans.map((p) => (
-              <div key={p._id} className="bg-slate-900 border border-slate-800 p-4 rounded-lg space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono text-white flex items-center space-x-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-brand-400" />
-                      <span>{p.plan_code}</span>
-                    </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                      p.status === 'ACTIVE'
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    }`}>
-                      {p.status}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-semibold text-slate-200">{p.plan_name}</h4>
-                  <p className="text-xs text-slate-400 min-h-[32px]">{p.description || 'No description provided.'}</p>
-                  <div className="pt-2 border-t border-slate-800 text-xs font-mono grid grid-cols-2 gap-2 text-slate-400">
-                    <div>Installments: <span className="text-white font-semibold">{p.installment_count} pay</span></div>
-                    <div>Down Pay: <span className="text-white font-semibold">{p.down_payment_pct}%</span></div>
-                    <div>Installment Fee: <span className="text-white font-semibold">${p.installment_fee || '0.00'}</span></div>
-                    <div>Cadence: <span className="text-white font-semibold">{p.interval_months} mo</span></div>
-                  </div>
-                </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto shadow-sm">
+            <table className="w-full text-left text-xs min-w-[800px]">
+              <thead className="bg-slate-850 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800">
+                <tr>
+                  <th className="p-3 whitespace-nowrap">Billing Plan</th>
+                  <th className="p-3">Description</th>
+                  <th className="p-3 text-center whitespace-nowrap">Installments</th>
+                  <th className="p-3 text-center whitespace-nowrap">Down Payment</th>
+                  <th className="p-3 text-center whitespace-nowrap">Cadence</th>
+                  <th className="p-3 text-right whitespace-nowrap">Installment Fee</th>
+                  <th className="p-3 text-center whitespace-nowrap">Status</th>
+                  <th className="p-3 text-right whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 font-mono">
+                {plans.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="p-6 text-center text-slate-500 font-sans">
+                      No billing plans found. Click "New Billing Plan" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  plans.map((p) => {
+                    const cadenceDisplay = p.interval_months
+                      ? (p.interval_months === 1 ? 'Monthly' : p.interval_months === 3 ? 'Quarterly' : `${p.interval_months} mo`)
+                      : (p.cadence || (p.installment_count === 1 ? 'Annual' : 'Quarterly'));
+                    return (
+                      <tr key={p._id} className="hover:bg-slate-850/50 transition">
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="text-xs font-bold font-mono text-brand-400 flex items-center space-x-1.5">
+                            <Sliders className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                            <span>{p.plan_code}</span>
+                          </span>
+                        </td>
+                        <td className="p-3 font-sans text-slate-300">
+                          <div className="text-xs text-slate-300">{p.description || p.plan_name || 'Standard commercial installment plan.'}</div>
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap text-white font-semibold">
+                          {p.installment_count} Pay
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap text-white font-semibold">
+                          {p.down_payment_pct}%
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap text-slate-300">
+                          {cadenceDisplay}
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap text-slate-300">
+                          ${typeof p.installment_fee === 'number' ? p.installment_fee.toFixed(2) : (p.installment_fee || '0.00')}
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                            p.status === 'ACTIVE'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => {
+                                setEditPlan({
+                                  _id: p._id,
+                                  plan_code: p.plan_code,
+                                  plan_name: p.plan_name || p.plan_code,
+                                  description: p.description || '',
+                                  installment_count: p.installment_count || 4,
+                                  down_payment_pct: p.down_payment_pct !== undefined ? p.down_payment_pct : 25,
+                                  installment_fee: p.installment_fee !== undefined ? p.installment_fee : 0,
+                                  interval_months: p.interval_months || 3,
+                                  status: p.status || 'ACTIVE'
+                                });
+                                setShowEditPlanModal(true);
+                              }}
+                              className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition border border-slate-700"
+                              title="Edit Billing Plan"
+                            >
+                              <Edit2 className="w-3 h-3 text-brand-400" />
+                              <span>Edit</span>
+                            </button>
 
-                {/* Plan Action Toolbar (CRUD: Edit, Toggle Status, Delete) */}
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-2">
-                  <button
-                    onClick={() => {
-                      setEditPlan({
-                        _id: p._id,
-                        plan_code: p.plan_code,
-                        plan_name: p.plan_name,
-                        description: p.description || '',
-                        installment_count: p.installment_count || 4,
-                        down_payment_pct: p.down_payment_pct !== undefined ? p.down_payment_pct : 25,
-                        installment_fee: p.installment_fee !== undefined ? p.installment_fee : 0,
-                        interval_months: p.interval_months || 3,
-                        status: p.status || 'ACTIVE'
-                      });
-                      setShowEditPlanModal(true);
-                    }}
-                    className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition border border-slate-700"
-                    title="Edit Billing Plan"
-                  >
-                    <Edit2 className="w-3 h-3 text-brand-400" />
-                    <span>Edit</span>
-                  </button>
+                            <button
+                              onClick={() => handleTogglePlanStatus(p._id)}
+                              className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition border ${
+                                p.status === 'ACTIVE'
+                                  ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
+                                  : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                              }`}
+                              title={p.status === 'ACTIVE' ? 'Deactivate this billing plan' : 'Activate this billing plan'}
+                            >
+                              <Power className="w-3 h-3" />
+                              <span>{p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
+                            </button>
 
-                  <button
-                    onClick={() => handleTogglePlanStatus(p._id)}
-                    className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs transition border ${
-                      p.status === 'ACTIVE'
-                        ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
-                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                    }`}
-                    title={p.status === 'ACTIVE' ? 'Deactivate this billing plan' : 'Activate this billing plan'}
-                  >
-                    <Power className="w-3 h-3" />
-                    <span>{p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDeletePlan(p._id, p.plan_name)}
-                    className="flex items-center space-x-1 px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded text-xs transition"
-                    title="Delete Billing Plan"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+                            <button
+                              onClick={() => handleDeletePlan(p._id, p.plan_name || p.plan_code)}
+                              className="flex items-center space-x-1 px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded text-xs transition"
+                              title="Delete Billing Plan"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -2712,11 +2894,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                   {/* OPTION B CARD */}
                   <div
                     onClick={() => setEndorsementForm({ ...endorsementForm, billing_option: 'SPREAD_INSTALLMENTS' })}
-                    className={`p-3 rounded-lg border cursor-pointer transition ${
-                      endorsementForm.billing_option === 'SPREAD_INSTALLMENTS'
+                    className={`p-3 rounded-lg border cursor-pointer transition ${endorsementForm.billing_option === 'SPREAD_INSTALLMENTS'
                         ? 'bg-brand-500/10 border-brand-500 text-white shadow-lg'
                         : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-xs flex items-center space-x-1.5 text-brand-400">
@@ -2742,11 +2923,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                   {/* OPTION A CARD */}
                   <div
                     onClick={() => setEndorsementForm({ ...endorsementForm, billing_option: 'STANDALONE_INVOICE' })}
-                    className={`p-3 rounded-lg border cursor-pointer transition ${
-                      endorsementForm.billing_option === 'STANDALONE_INVOICE'
+                    className={`p-3 rounded-lg border cursor-pointer transition ${endorsementForm.billing_option === 'STANDALONE_INVOICE'
                         ? 'bg-blue-950/40 border-blue-500 text-white shadow-lg'
                         : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-xs flex items-center space-x-1.5 text-blue-400">
@@ -3009,11 +3189,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                           <select
                             value={isDebit ? 'DEBIT' : 'CREDIT'}
                             onChange={(e) => handleJournalLineChange(idx, 'type', e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${
-                              isDebit
+                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${isDebit
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                 : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            }`}
+                              }`}
                           >
                             <option value="DEBIT">Dr (Debit)</option>
                             <option value="CREDIT">Cr (Credit)</option>
@@ -3100,11 +3279,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 <button
                   type="submit"
                   disabled={loading || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
-                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    loading || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${loading || Math.abs(invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - invoiceJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <Receipt className="w-3.5 h-3.5" />
                   <span>{loading ? 'Posting...' : 'Issue Invoice & Post Journal'}</span>
@@ -3202,11 +3380,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                             });
                           }
                         }}
-                        className={`w-full bg-slate-800 border rounded p-2 text-xs text-white focus:outline-none transition ${
-                          !paymentForm.target_invoice_id
+                        className={`w-full bg-slate-800 border rounded p-2 text-xs text-white focus:outline-none transition ${!paymentForm.target_invoice_id
                             ? 'border-amber-500/80 ring-1 ring-amber-500/40'
                             : 'border-slate-700 focus:border-brand-500'
-                        }`}
+                          }`}
                       >
                         <option value="">-- Select Target Invoice (Required) * --</option>
                         {openInvoicesForAccount.map((inv) => (
@@ -3346,11 +3523,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                           <select
                             value={isDebit ? 'DEBIT' : 'CREDIT'}
                             onChange={(e) => handlePaymentJournalLineChange(idx, 'type', e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${
-                              isDebit
+                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${isDebit
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                 : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            }`}
+                              }`}
                           >
                             <option value="DEBIT">Dr (Debit)</option>
                             <option value="CREDIT">Cr (Credit)</option>
@@ -3437,11 +3613,10 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
                 <button
                   type="submit"
                   disabled={!paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
-                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    !paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${!paymentForm.target_invoice_id || !paymentForm.amount || parseFloat(paymentForm.amount) <= 0 || loading || Math.abs(paymentJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - paymentJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>{loading ? 'Processing...' : 'Capture Cash & Post Journal'}</span>

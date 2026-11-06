@@ -153,7 +153,10 @@ export const authApi = {
   toggleBillingPlanStatus: async (id) => ({ success: true }),
   deleteBillingPlan: async (id) => ({ success: true }),
   seedRules: async () => { await delay(); return localStorageEngine.seedPostingRules(); },
-  generateSchedule: async (payload) => ({ success: true, data: localStorageEngine.getInstallmentSchedules().data }),
+  generateSchedule: async (payload) => {
+    await delay();
+    return localStorageEngine.generateSchedule(payload);
+  },
   getInstallmentSchedules: async () => {
     await delay();
     return localStorageEngine.getInstallmentSchedules();

@@ -166,7 +166,7 @@ export default function TenantDashboardPage({ onNavigateTab }) {
               ${metrics?.cash?.fiduciary_trust_cash || '0.00'}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              GL 1010 Premium Trust (Texas § 4053)
+              GL 1010 Premium Trust (Texas & 4053)
             </div>
           </div>
           <button
@@ -212,11 +212,10 @@ export default function TenantDashboardPage({ onNavigateTab }) {
               <span>General Ledger Health</span>
             </h3>
             <span
-              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                metrics?.gl?.trial_balance_balanced
+              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${metrics?.gl?.trial_balance_balanced
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-              }`}
+                }`}
             >
               {metrics?.gl?.trial_balance_balanced ? 'TRIAL BALANCE IN BALANCE' : 'UNBALANCED'}
             </span>

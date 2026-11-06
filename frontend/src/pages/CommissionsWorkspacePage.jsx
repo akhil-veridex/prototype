@@ -25,20 +25,6 @@ import {
 import { commissionsApi, rulesApi, dimensionsApi, billingApi, authApi } from '../services/api';
 import ModalClose from '../components/ModalClose';
 
-const defaultCOA = [
-    { account_code: '1000', account_name: 'Operating Cash', account_type: 'ASSET' },
-    { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', account_type: 'ASSET' },
-    { account_code: '1020', account_name: 'Cash - Claims Escrow Account', account_type: 'ASSET' },
-    { account_code: '1100', account_name: 'Premium Receivable', account_type: 'ASSET' },
-    { account_code: '2010', account_name: 'Due to Carrier', account_type: 'LIABILITY' },
-    { account_code: '2020', account_name: 'Broker Commission Payable', account_type: 'LIABILITY' },
-    { account_code: '2190', account_name: 'Unapplied Cash Suspense', account_type: 'LIABILITY' },
-    { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR - ASC 944)', account_type: 'LIABILITY' },
-    { account_code: '4000', account_name: 'Earned Premium Revenue', account_type: 'REVENUE' },
-    { account_code: '4100', account_name: 'Policy Fee Income', account_type: 'REVENUE' },
-    { account_code: '4200', account_name: 'MGA Commission Income', account_type: 'REVENUE' }
-  ];
-
 export default function CommissionsWorkspacePage({ section }) {
   // `section` is driven by the sidebar; without it the page shows its own tab bar.
   const [activeSubtab, setActiveSubtab] = useState(section || 'overview');
@@ -64,7 +50,19 @@ export default function CommissionsWorkspacePage({ section }) {
   const [chainPreview, setChainPreview] = useState(null);
   const [glAccounts, setGlAccounts] = useState([]);
 
-
+  const defaultCOA = [
+    { account_code: '1000', account_name: 'Operating Cash', account_type: 'ASSET' },
+    { account_code: '1010', account_name: 'Premium Trust Bank (Texas & 4053)', account_type: 'ASSET' },
+    { account_code: '1020', account_name: 'Cash - Claims Escrow Account', account_type: 'ASSET' },
+    { account_code: '1100', account_name: 'Premium Receivable', account_type: 'ASSET' },
+    { account_code: '2010', account_name: 'Due to Carrier', account_type: 'LIABILITY' },
+    { account_code: '2020', account_name: 'Broker Commission Payable', account_type: 'LIABILITY' },
+    { account_code: '2190', account_name: 'Unapplied Cash Suspense', account_type: 'LIABILITY' },
+    { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR - ASC 944)', account_type: 'LIABILITY' },
+    { account_code: '4000', account_name: 'Earned Premium Revenue', account_type: 'REVENUE' },
+    { account_code: '4100', account_name: 'Policy Fee Income', account_type: 'REVENUE' },
+    { account_code: '4200', account_name: 'MGA Commission Income', account_type: 'REVENUE' }
+  ];
 
   // Broker Disburse Modal State
   const [showBrokerModal, setShowBrokerModal] = useState(false);
@@ -75,101 +73,6 @@ export default function CommissionsWorkspacePage({ section }) {
   // Commission Allocation Modal State
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationJournalLines, setAllocationJournalLines] = useState([]);
-
-// Settlement Disburse Modal State
-  const [showSettlementModal, setShowSettlementModal] = useState(false);
-  const [selectedSettlementStmt, setSelectedSettlementStmt] = useState(null);
-  const [settlementPaymentRef, setSettlementPaymentRef] = useState('');
-  const [settlementJournalLines, setSettlementJournalLines] = useState([]);
-
-// Forms & Modal states
-  const [newAgreement, setNewAgreement] = useState({
-    agreement_code: 'AGR-SUMMIT-HARBOR',
-    name: 'Summit Mutual MGA Agreement',
-    contract_reference: 'SUMMIT-2026',
-    payer_party_id: 'CARRIER-SUMMIT',
-    payer_party_name: 'Summit Mutual',
-    payee_party_id: 'MGA-HARBOR',
-    payee_party_name: 'Harbor Underwriting MGA',
-    agreement_type: 'CARRIER_TO_MGA',
-    effective_from: '2026-01-01'
-  });
-
-  const [sweepForm, setSweepForm] = useState({
-    fiduciary_account_id: '',
-    amount: '3765.00',
-    notes: 'Texas § 4053 MGA Earned Commission Sweep'
-  });
-
-  const [settlementForm, setSettlementForm] = useState({
-    fiduciary_account_id: '',
-    carrier_party_id: 'CARRIER-SUMMIT',
-    carrier_name: 'Summit Mutual Insurance Company',
-    period: '2026-07'
-  });
-  const [settlementPreview, setSettlementPreview] = useState(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [disbursingStatementId, setDisbursingStatementId] = useState(null);
-
-  // Dynamic Commission & Carrier Share Allocation State (Step 1.3)
-  const [allocating, setAllocating] = useState(false);
-  const [dimensionContext, setDimensionContext] = useState(null);
-  const [invoicesList, setInvoicesList] = useState([]);
-  const [showAdvancedDimensions, setShowAdvancedDimensions] = useState(false);
-  const [allocationForm, setAllocationForm] = useState({
-    policy_reference: 'POL-TX-8821',
-    invoice_reference: 'INV-2026-00001',
-    installment_premium: 9412.50,
-    carrier_id: '',
-    carrier_name: '',
-    broker_id: '',
-    broker_name: '',
-    carrier_rate: 80.0,
-    broker_rate: 10.0,
-    mga_rate: 10.0,
-    cost_center: 'CC-OPS',
-    company_code: 'COMP-001',
-    custom_dimension_key: '',
-    custom_dimension_value: ''
-  });
-
-  // Dynamic Bordereau & Carrier Communication State (Subtab 8)
-  const [transmittingRunId, setTransmittingRunId] = useState(null);
-  const [bordereauForm, setBordereauForm] = useState({
-    carrier_id: 'CARRIER-SUMMIT',
-    carrier_name: 'Summit Mutual Insurance Company',
-    reporting_period: '2026-07',
-    risk_state: 'TX',
-    line_of_business: 'COMMERCIAL_AUTO',
-    reporting_frequency: 'MONTHLY',
-    transmission_protocol: 'ACORD_XML_EDI'
-  });
-
-  // Top-Level Effects (Strict Rules of Hooks)
-useEffect(() => {
-    authApi.getAccounts().then(res => {
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        setGlAccounts(res.data);
-      }
-    }).catch(() => {});
-  }, []);
-
-useEffect(() => {
-    if (section) {
-      setActiveSubtab(section);
-      setError(null);
-      setSuccessMsg(null);
-    }
-  }, [section]);
-
-  useEffect(() => {
-    if (activeSubtab === 'overview') {
-      loadOverview();
-    } else {
-      loadSubtabData(activeSubtab);
-    }
-  }, [activeSubtab]);
-
 
   const openAllocationModal = () => {
     const prem = parseFloat(allocationForm.installment_premium) || 9412.50;
@@ -304,6 +207,20 @@ useEffect(() => {
     }
   };
 
+  // Settlement Disburse Modal State
+  const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [selectedSettlementStmt, setSelectedSettlementStmt] = useState(null);
+  const [settlementPaymentRef, setSettlementPaymentRef] = useState('');
+  const [settlementJournalLines, setSettlementJournalLines] = useState([]);
+
+  useEffect(() => {
+    authApi.getAccounts().then(res => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setGlAccounts(res.data);
+      }
+    }).catch(() => { });
+  }, []);
+
   const openBrokerDisburseModal = (tx) => {
     setSelectedBrokerTx(tx);
     const amt = Number(tx.calculated_amount?.$numberDecimal || tx.calculated_amount || 0).toFixed(2);
@@ -319,7 +236,7 @@ useEffect(() => {
         account_code: '1010',
         debit: '0.00',
         credit: amt,
-        memo: 'Broker Commission Payout from Texas § 4053 Premium Trust'
+        memo: 'Broker Commission Payout from Texas & 4053 Premium Trust'
       }
     ]);
     setShowBrokerModal(true);
@@ -409,7 +326,7 @@ useEffect(() => {
         account_code: '1010',
         debit: '0.00',
         credit: netDue,
-        memo: 'Disbursement from Texas § 4053 Premium Trust'
+        memo: 'Disbursement from Texas & 4053 Premium Trust'
       }
     ]);
     setShowSettlementModal(true);
@@ -473,7 +390,7 @@ useEffect(() => {
         payment_reference: settlementPaymentRef,
         custom_journal_lines: settlementJournalLines
       });
-      setSuccessMsg(`Carrier Settlement disbursed from Texas § 4053 Trust! Journal #${res.data?.journal ? res.data.journal.journal_number : 'JE-DISBURSED'} posted.`);
+      setSuccessMsg(`Carrier Settlement disbursed from Texas & 4053 Trust! Journal #${res.data?.journal ? res.data.journal.journal_number : 'JE-DISBURSED'} posted.`);
       setShowSettlementModal(false);
       loadSubtabData('settlements');
       loadSettlementPreview(settlementForm.carrier_party_id, settlementForm.period);
@@ -483,6 +400,69 @@ useEffect(() => {
       setLoading(false);
     }
   };
+
+  // Forms & Modal states
+  const [newAgreement, setNewAgreement] = useState({
+    agreement_code: 'AGR-SUMMIT-HARBOR',
+    name: 'Summit Mutual MGA Agreement',
+    contract_reference: 'SUMMIT-2026',
+    payer_party_id: 'CARRIER-SUMMIT',
+    payer_party_name: 'Summit Mutual',
+    payee_party_id: 'MGA-HARBOR',
+    payee_party_name: 'Harbor Underwriting MGA',
+    agreement_type: 'CARRIER_TO_MGA',
+    effective_from: '2026-01-01'
+  });
+
+  const [sweepForm, setSweepForm] = useState({
+    fiduciary_account_id: '',
+    amount: '3765.00',
+    notes: 'Texas & 4053 MGA Earned Commission Sweep'
+  });
+
+  const [settlementForm, setSettlementForm] = useState({
+    fiduciary_account_id: '',
+    carrier_party_id: 'CARRIER-SUMMIT',
+    carrier_name: 'Summit Mutual Insurance Company',
+    period: '2026-07'
+  });
+  const [settlementPreview, setSettlementPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [disbursingStatementId, setDisbursingStatementId] = useState(null);
+
+  // Dynamic Commission & Carrier Share Allocation State (Step 1.3)
+  const [allocating, setAllocating] = useState(false);
+  const [dimensionContext, setDimensionContext] = useState(null);
+  const [invoicesList, setInvoicesList] = useState([]);
+  const [showAdvancedDimensions, setShowAdvancedDimensions] = useState(false);
+  const [allocationForm, setAllocationForm] = useState({
+    policy_reference: 'POL-TX-8821',
+    invoice_reference: 'INV-2026-00001',
+    installment_premium: 9412.50,
+    carrier_id: '',
+    carrier_name: '',
+    broker_id: '',
+    broker_name: '',
+    carrier_rate: 80.0,
+    broker_rate: 10.0,
+    mga_rate: 10.0,
+    cost_center: 'CC-OPS',
+    company_code: 'COMP-001',
+    custom_dimension_key: '',
+    custom_dimension_value: ''
+  });
+
+  // Dynamic Bordereau & Carrier Communication State (Subtab 8)
+  const [transmittingRunId, setTransmittingRunId] = useState(null);
+  const [bordereauForm, setBordereauForm] = useState({
+    carrier_id: 'CARRIER-SUMMIT',
+    carrier_name: 'Summit Mutual Insurance Company',
+    reporting_period: '2026-07',
+    risk_state: 'TX',
+    line_of_business: 'COMMERCIAL_AUTO',
+    reporting_frequency: 'MONTHLY',
+    transmission_protocol: 'ACORD_XML_EDI'
+  });
 
   const handleAllocateShares = async () => {
     try {
@@ -523,7 +503,7 @@ useEffect(() => {
   };
 
   // Load Overview Data
-  async function loadOverview() {
+  const loadOverview = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -538,7 +518,7 @@ useEffect(() => {
     }
   };
 
-  async function loadSubtabData(subtab) {
+  const loadSubtabData = async (subtab) => {
     try {
       setLoading(true);
       setError(null);
@@ -647,6 +627,22 @@ useEffect(() => {
     }
   };
 
+  useEffect(() => {
+    if (section) {
+      setActiveSubtab(section);
+      setError(null);
+      setSuccessMsg(null);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (activeSubtab === 'overview') {
+      loadOverview();
+    } else {
+      loadSubtabData(activeSubtab);
+    }
+  }, [activeSubtab]);
+
   // Seed Canonical Chain
   const handleSeedCanonical = async () => {
     try {
@@ -669,7 +665,7 @@ useEffect(() => {
       setLoading(true);
       setError(null);
       const res = await commissionsApi.seedFiduciaryAccounts();
-      setSuccessMsg(res.message || 'Default Texas § 4053 Fiduciary Trust Accounts initialized successfully!');
+      setSuccessMsg(res.message || 'Default Texas & 4053 Fiduciary Trust Accounts initialized successfully!');
       const updated = await commissionsApi.getFiduciaryAccounts();
       setFiduciaryAccounts(updated.data || []);
       if (updated.data && updated.data.length > 0) {
@@ -771,7 +767,7 @@ useEffect(() => {
   };
 
   // Load Settlement Preview
-  async function loadSettlementPreview(carrierId, period, fidId) {
+  const loadSettlementPreview = async (carrierId, period, fidId) => {
     try {
       setLoadingPreview(true);
       const cId = carrierId || settlementForm.carrier_party_id || 'CARRIER-SUMMIT';
@@ -817,7 +813,7 @@ useEffect(() => {
       const res = await commissionsApi.disburseSettlement(statementId, {
         payment_reference: `ACH-${cleanCarrier}-DISBURSE-${Date.now().toString().slice(-4)}`
       });
-      setSuccessMsg(`Carrier Settlement disbursed from Texas § 4053 Trust! Journal #${res.data.journal ? res.data.journal.journal_number : 'JE-DISBURSED'} posted for $${netDue || ''}.`);
+      setSuccessMsg(`Carrier Settlement disbursed from Texas & 4053 Trust! Journal #${res.data.journal ? res.data.journal.journal_number : 'JE-DISBURSED'} posted for $${netDue || ''}.`);
       loadSubtabData('settlements');
       loadSettlementPreview(settlementForm.carrier_party_id, settlementForm.period);
     } catch (err) {
@@ -839,7 +835,7 @@ useEffect(() => {
             </span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Texas § 4053 segregated trust accounts, canonical distribution chain, bordereaux generation and carrier settlements.
+            Texas & 4053 segregated trust accounts, canonical distribution chain, bordereaux generation and carrier settlements.
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -899,11 +895,10 @@ useEffect(() => {
                 setError(null);
                 setSuccessMsg(null);
               }}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-t-lg text-xs font-medium transition whitespace-nowrap ${
-                isActive
+              className={`flex items-center space-x-2 px-3 py-2 rounded-t-lg text-xs font-medium transition whitespace-nowrap ${isActive
                   ? 'bg-slate-850 text-brand-400 border-b-2 border-brand-500 font-semibold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
+                }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
@@ -925,7 +920,7 @@ useEffect(() => {
               <div className="text-[10px] text-slate-500 mt-1">Unrestricted Operating Funds</div>
             </div>
             <div className="p-4 bg-slate-900 border border-emerald-500/20 rounded-lg">
-              <div className="text-[11px] font-mono text-emerald-400 uppercase">Texas § 4053 Trust (1010)</div>
+              <div className="text-[11px] font-mono text-emerald-400 uppercase">Texas & 4053 Trust (1010)</div>
               <div className="text-xl font-bold font-mono text-emerald-300 mt-1">
                 ${overview?.balances?.fiduciary_trust_cash || '0.00'}
               </div>
@@ -1237,13 +1232,12 @@ useEffect(() => {
                       <td className="text-slate-400">{tx.rate_applied?.$numberDecimal || tx.rate_applied}%</td>
                       <td className="text-emerald-400 font-bold">${tx.calculated_amount?.$numberDecimal || tx.calculated_amount}</td>
                       <td>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                          tx.lifecycle_status === 'PAID'
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${tx.lifecycle_status === 'PAID'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : tx.lifecycle_status === 'PAYABLE'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-400'
-                        }`}>
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-blue-500/10 text-blue-400'
+                          }`}>
                           {tx.lifecycle_status}
                         </span>
                       </td>
@@ -1633,7 +1627,7 @@ useEffect(() => {
                     onClick={handleSeedFiduciaryAccounts}
                     disabled={loading}
                     className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-750 text-slate-300 text-[10px] font-semibold border border-slate-700 flex items-center space-x-1.5 transition"
-                    title="Initialize or reload Texas § 4053 standard fiduciary accounts"
+                    title="Initialize or reload Texas & 4053 standard fiduciary accounts"
                   >
                     <Sparkles className="w-3 h-3 text-amber-400" />
                     <span>Seed Trust Accounts</span>
@@ -1653,7 +1647,7 @@ useEffect(() => {
                       className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-semibold inline-flex items-center space-x-1.5 transition"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Initialize Texas § 4053 Accounts</span>
+                      <span>Initialize Texas & 4053 Accounts</span>
                     </button>
                   </div>
                 ) : (
@@ -1665,11 +1659,10 @@ useEffect(() => {
                         <div
                           key={fa._id}
                           onClick={() => setSweepForm(prev => ({ ...prev, fiduciary_account_id: fa._id }))}
-                          className={`p-3.5 rounded-lg border cursor-pointer transition space-y-2.5 ${
-                            isSelected
+                          className={`p-3.5 rounded-lg border cursor-pointer transition space-y-2.5 ${isSelected
                               ? 'bg-slate-950 border-emerald-500/50 shadow-md shadow-emerald-500/5'
                               : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
+                            }`}
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -1699,7 +1692,7 @@ useEffect(() => {
                             </div>
                             <div>
                               <span className="text-slate-500">Statute: </span>
-                              <span className="text-amber-400/90 font-mono">{fa.jurisdiction_statute || 'Texas § 4053'}</span>
+                              <span className="text-amber-400/90 font-mono">{fa.jurisdiction_statute || 'Texas & 4053'}</span>
                             </div>
                             <div>
                               <span className="text-slate-500">Vault Token: </span>
@@ -1724,11 +1717,10 @@ useEffect(() => {
                                 e.stopPropagation();
                                 setSweepForm(prev => ({ ...prev, fiduciary_account_id: fa._id }));
                               }}
-                              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition ${
-                                isSelected
+                              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition ${isSelected
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                              }`}
+                                }`}
                             >
                               {isSelected ? '✓ Selected for Sweep' : 'Select for Sweep'}
                             </button>
@@ -1884,11 +1876,10 @@ useEffect(() => {
                   <button
                     type="submit"
                     disabled={loading || publishedSweepRules.length === 0 || fiduciaryAccounts.length === 0}
-                    className={`w-full py-2.5 rounded text-xs font-semibold transition ${
-                      publishedSweepRules.length === 0 || fiduciaryAccounts.length === 0
+                    className={`w-full py-2.5 rounded text-xs font-semibold transition ${publishedSweepRules.length === 0 || fiduciaryAccounts.length === 0
                         ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                         : 'bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/10'
-                    }`}
+                      }`}
                   >
                     Execute Trust-to-Operating Cash Sweep (${Number(sweepForm.amount || 0).toFixed(2)})
                   </button>
@@ -2229,7 +2220,7 @@ useEffect(() => {
               <h3 className="text-sm font-semibold text-slate-100 flex items-center space-x-2">
                 <span>Multi-Carrier Settlement Statements & Fiduciary Remittance</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Texas § 4053 Compliant
+                  Texas & 4053 Compliant
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -2281,10 +2272,10 @@ useEffect(() => {
                   {(dimensionContext?.counterparties?.carriers?.length > 0
                     ? dimensionContext.counterparties.carriers
                     : [
-                        { party_code: 'CARRIER-SUMMIT', legal_name: 'Summit Mutual Insurance Company' },
-                        { party_code: 'CARRIER-SOUTHLAKE', legal_name: 'Southlake Specialty Insurance Company' },
-                        { party_code: 'CARRIER-CLEARSPRING', legal_name: 'ClearSpring Property & Casualty Company' }
-                      ]
+                      { party_code: 'CARRIER-SUMMIT', legal_name: 'Summit Mutual Insurance Company' },
+                      { party_code: 'CARRIER-SOUTHLAKE', legal_name: 'Southlake Specialty Insurance Company' },
+                      { party_code: 'CARRIER-CLEARSPRING', legal_name: 'ClearSpring Property & Casualty Company' }
+                    ]
                   ).map((c) => (
                     <option key={c.party_code || c._id} value={c.party_code || c._id}>
                       {c.legal_name || c.trade_name} ({c.party_code})
@@ -2437,10 +2428,10 @@ useEffect(() => {
                     {settlementPreview?.already_settled
                       ? `Settlement Already Disbursed (${settlementPreview.existing_statement?.statement_number})`
                       : settlementPreview?.already_generated
-                      ? `Statement Exists (${settlementPreview.existing_statement?.statement_number})`
-                      : !settlementPreview?.can_generate
-                      ? `No Unsettled Premium to Remit ($0.00)`
-                      : `Generate Settlement Statement for ${settlementForm.carrier_name} (${settlementForm.period})`}
+                        ? `Statement Exists (${settlementPreview.existing_statement?.statement_number})`
+                        : !settlementPreview?.can_generate
+                          ? `No Unsettled Premium to Remit ($0.00)`
+                          : `Generate Settlement Statement for ${settlementForm.carrier_name} (${settlementForm.period})`}
                   </span>
                 </button>
               </div>
@@ -2542,11 +2533,10 @@ useEffect(() => {
                       <td className="text-amber-400">${s.commission_withheld?.$numberDecimal || s.commission_withheld}</td>
                       <td className="text-emerald-400 font-bold">${s.net_due_carrier?.$numberDecimal || s.net_due_carrier}</td>
                       <td>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                          s.status === 'PAID'
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${s.status === 'PAID'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}>
+                          }`}>
                           {s.status}
                         </span>
                       </td>
@@ -2589,7 +2579,7 @@ useEffect(() => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Disburse Broker Commission &amp; General Ledger Impact</h3>
-                  <p className="text-xs text-slate-400">ACH disbursement from Texas § 4053 Premium Trust to Retail Producer</p>
+                  <p className="text-xs text-slate-400">ACH disbursement from Texas & 4053 Premium Trust to Retail Producer</p>
                 </div>
               </div>
               <button
@@ -2683,11 +2673,10 @@ useEffect(() => {
                           <select
                             value={isDebit ? 'DEBIT' : 'CREDIT'}
                             onChange={(e) => handleBrokerJournalLineChange(idx, 'type', e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${
-                              isDebit
+                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${isDebit
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                 : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            }`}
+                              }`}
                           >
                             <option value="DEBIT">Dr (Debit)</option>
                             <option value="CREDIT">Cr (Credit)</option>
@@ -2768,11 +2757,10 @@ useEffect(() => {
                 <button
                   type="submit"
                   disabled={loading || Math.abs(brokerJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - brokerJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
-                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    loading || Math.abs(brokerJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - brokerJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${loading || Math.abs(brokerJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - brokerJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-purple-600 hover:bg-purple-500 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>{loading ? 'Disbursing...' : 'Disburse Broker via ACH'}</span>
@@ -2795,7 +2783,7 @@ useEffect(() => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Disburse Carrier Remittance &amp; General Ledger Impact</h3>
-                  <p className="text-xs text-slate-400">ACH remittance discharge from Texas § 4053 Premium Trust to Risk Carrier</p>
+                  <p className="text-xs text-slate-400">ACH remittance discharge from Texas & 4053 Premium Trust to Risk Carrier</p>
                 </div>
               </div>
               <button
@@ -2893,11 +2881,10 @@ useEffect(() => {
                           <select
                             value={isDebit ? 'DEBIT' : 'CREDIT'}
                             onChange={(e) => handleSettlementJournalLineChange(idx, 'type', e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${
-                              isDebit
+                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${isDebit
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                 : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            }`}
+                              }`}
                           >
                             <option value="DEBIT">Dr (Debit)</option>
                             <option value="CREDIT">Cr (Credit)</option>
@@ -2978,11 +2965,10 @@ useEffect(() => {
                 <button
                   type="submit"
                   disabled={loading || Math.abs(settlementJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - settlementJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
-                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    loading || Math.abs(settlementJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - settlementJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${loading || Math.abs(settlementJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - settlementJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>{loading ? 'Disbursing...' : 'Disburse Carrier Remittance via ACH'}</span>
@@ -3091,11 +3077,10 @@ useEffect(() => {
                           <select
                             value={isDebit ? 'DEBIT' : 'CREDIT'}
                             onChange={(e) => handleAllocationJournalLineChange(idx, 'type', e.target.value)}
-                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${
-                              isDebit
+                            className={`w-full px-2 py-1.5 rounded text-xs font-semibold font-mono focus:outline-none border ${isDebit
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                 : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            }`}
+                              }`}
                           >
                             <option value="DEBIT">Dr (Debit)</option>
                             <option value="CREDIT">Cr (Credit)</option>
@@ -3177,11 +3162,10 @@ useEffect(() => {
                 <button
                   type="submit"
                   disabled={allocating || Math.abs(allocationJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - allocationJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01}
-                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${
-                    allocating || Math.abs(allocationJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - allocationJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
+                  className={`px-4 py-1.5 rounded font-semibold text-white flex items-center space-x-1.5 shadow-sm transition ${allocating || Math.abs(allocationJournalLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) - allocationJournalLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)) > 0.01
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                       : 'bg-brand-600 hover:bg-brand-500 cursor-pointer'
-                  }`}
+                    }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
                   <span>{allocating ? 'Posting...' : 'Confirm & Post Allocation Journal'}</span>

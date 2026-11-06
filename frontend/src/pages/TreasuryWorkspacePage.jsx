@@ -236,7 +236,7 @@ export default function TreasuryWorkspacePage({ section, onSectionChange }) {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Two-pane bank statement reconciliation, processor settlements, NSF returns, refunds, Texas § 4053 trust accounts, and dunning.
+            Two-pane bank statement reconciliation, processor settlements, NSF returns, refunds, Texas & 4053 trust accounts, and dunning.
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -292,11 +292,10 @@ export default function TreasuryWorkspacePage({ section, onSectionChange }) {
                 setSuccess(null);
                 setError(null);
               }}
-              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-medium border-b-2 whitespace-nowrap transition ${
-                isActive
+              className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-medium border-b-2 whitespace-nowrap transition ${isActive
                   ? 'border-brand-500 text-brand-400 bg-brand-500/5'
                   : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
@@ -536,11 +535,10 @@ export default function TreasuryWorkspacePage({ section, onSectionChange }) {
                     <td className="p-3 text-white font-sans">{bl.bank_description}</td>
                     <td className="p-3 text-white font-semibold">${bl.amount} {bl.direction}</td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] ${
-                        bl.reconciliation_status === 'MATCHED'
+                      <span className={`px-2 py-0.5 rounded text-[10px] ${bl.reconciliation_status === 'MATCHED'
                           ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                           : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      }`}>
+                        }`}>
                         {bl.reconciliation_status}
                       </span>
                     </td>
@@ -616,7 +614,7 @@ export default function TreasuryWorkspacePage({ section, onSectionChange }) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="text-xs text-slate-400">
-              Customer premium refund disbursements from Texas § 4053 segregated trust account.
+              Customer premium refund disbursements from Texas & 4053 segregated trust account.
             </div>
             <button
               onClick={() => setShowRefundModal(true)}

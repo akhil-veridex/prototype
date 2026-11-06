@@ -11,7 +11,7 @@ export const INITIAL_TENANTS = [
     tenant_type: 'MGA',
     currency: 'USD',
     state: 'TX',
-    fiduciary_compliance: 'Texas § 4053',
+    fiduciary_compliance: 'Texas & 4053',
     status: 'ACTIVE'
   },
   {
@@ -73,8 +73,8 @@ export const INITIAL_ACCOUNTS = [
     id: 'acc-1010',
     account_code: '1010',
     code: '1010',
-    account_name: 'Premium Trust Bank (Texas § 4053)',
-    name: 'Premium Trust Bank (Texas § 4053)',
+    account_name: 'Premium Trust Bank (Texas & 4053)',
+    name: 'Premium Trust Bank (Texas & 4053)',
     account_type: 'ASSET',
     type: 'ASSET',
     normal_balance: 'DEBIT',
@@ -88,7 +88,7 @@ export const INITIAL_ACCOUNTS = [
     current_balance: 9562.50,
     balance: 9562.50,
     is_fiduciary: true,
-    compliance_tag: 'Texas § 4053'
+    compliance_tag: 'Texas & 4053'
   },
   {
     _id: 'acc-1020',
@@ -110,7 +110,7 @@ export const INITIAL_ACCOUNTS = [
     current_balance: 0,
     balance: 0,
     is_fiduciary: true,
-    compliance_tag: 'Texas § 4053'
+    compliance_tag: 'Texas & 4053'
   },
   {
     _id: 'acc-1100',
@@ -198,7 +198,7 @@ export const INITIAL_ACCOUNTS = [
     current_balance: 0,
     balance: 0,
     is_fiduciary: true,
-    compliance_tag: 'Texas § 4053'
+    compliance_tag: 'Texas & 4053'
   },
   {
     _id: 'acc-2020',
@@ -220,7 +220,7 @@ export const INITIAL_ACCOUNTS = [
     current_balance: 0,
     balance: 0,
     is_fiduciary: true,
-    compliance_tag: 'Texas § 4053'
+    compliance_tag: 'Texas & 4053'
   },
   {
     _id: 'acc-2100',
@@ -242,7 +242,7 @@ export const INITIAL_ACCOUNTS = [
     current_balance: 0,
     balance: 0,
     is_fiduciary: true,
-    compliance_tag: 'Texas § 4053'
+    compliance_tag: 'Texas & 4053'
   },
   {
     _id: 'acc-2190',
@@ -643,6 +643,18 @@ export const INITIAL_BILLING_ACCOUNTS = [
     ar_balance: 0.00,
     unapplied_cash: 0.00,
     status: 'ACTIVE'
+  },
+  {
+    _id: 'ba-002',
+    account_number: 'BA-INSURED-APEX',
+    customer_name: 'Apex Freight Logistics Inc.',
+    payer_party_id: { _id: 'cp-insured-apex', party_name: 'Apex Freight Logistics Inc.' },
+    bill_type: 'DIRECT_BILL',
+    default_billing_plan_id: { _id: 'bp-4pay', plan_code: '4-Pay 25% Down' },
+    currency_code: 'USD',
+    ar_balance: 0.00,
+    unapplied_cash: 0.00,
+    status: 'ACTIVE'
   }
 ];
 
@@ -651,10 +663,43 @@ export const INITIAL_BILLING_PLANS = [
     _id: 'bp-4pay',
     billing_plan_id: 'bp-4pay',
     plan_code: '4-Pay 25% Down',
+    plan_name: 'Commercial Auto 4-Pay (25% Down)',
     description: 'Commercial Auto 4-Pay plan: 25% down payment + 3 quarterly installments',
     installment_count: 4,
     down_payment_pct: 25,
     installment_fee: 0,
+    interval_months: 3,
+    cadence: 'Quarterly',
+    split_method: 'PRO_RATA',
+    is_active: true,
+    status: 'ACTIVE'
+  },
+  {
+    _id: 'bp-fullpay',
+    billing_plan_id: 'bp-fullpay',
+    plan_code: 'Full Pay',
+    plan_name: 'Annual Single Full Pay',
+    description: '100% full down payment on policy binding with $0 installment fees',
+    installment_count: 1,
+    down_payment_pct: 100,
+    installment_fee: 0,
+    interval_months: 12,
+    cadence: 'Annual',
+    split_method: 'FULL',
+    is_active: true,
+    status: 'ACTIVE'
+  },
+  {
+    _id: 'bp-10pay',
+    billing_plan_id: 'bp-10pay',
+    plan_code: '10-Pay Monthly',
+    plan_name: 'Commercial Fleet 10-Pay (20% Down)',
+    description: '20% deposit followed by 9 equal monthly installments ($5.00 admin fee)',
+    installment_count: 10,
+    down_payment_pct: 20,
+    installment_fee: 5,
+    interval_months: 1,
+    cadence: 'Monthly',
     split_method: 'PRO_RATA',
     is_active: true,
     status: 'ACTIVE'
@@ -762,6 +807,102 @@ export const INITIAL_SCHEDULES = [
     invoice_id: null,
     invoice_number: null,
     dimensions: {}
+  },
+  {
+    _id: 'sch-101',
+    installment_id: 'sch-101',
+    installment_number: 1,
+    installment_no: 1,
+    is_down_payment: true,
+    policy_number: 'POL-CA-9942',
+    policy_id: 'POL-CA-9942',
+    billing_policy_snapshot_id: 'SNP-POL-CA-9942',
+    billing_transaction_snapshot_id: 'TX-SNAP-002',
+    billing_account_id: { _id: 'ba-002', customer_name: 'Apex Freight Logistics Inc.', account_number: 'BA-INSURED-APEX' },
+    customer_name: 'Apex Freight Logistics Inc.',
+    due_date: '2026-02-15',
+    premium_amount: 6000.00,
+    premium: 6000.00,
+    fee_amount: 100.00,
+    fee: 100.00,
+    total_amount: 6100.00,
+    total_due: 6100.00,
+    status: 'PAID',
+    invoice_id: { _id: 'inv-002', invoice_number: 'INV-2026-0002' },
+    invoice_number: 'INV-2026-0002',
+    dimensions: {}
+  },
+  {
+    _id: 'sch-102',
+    installment_id: 'sch-102',
+    installment_number: 2,
+    installment_no: 2,
+    is_down_payment: false,
+    policy_number: 'POL-CA-9942',
+    policy_id: 'POL-CA-9942',
+    billing_policy_snapshot_id: 'SNP-POL-CA-9942',
+    billing_transaction_snapshot_id: 'TX-SNAP-002',
+    billing_account_id: { _id: 'ba-002', customer_name: 'Apex Freight Logistics Inc.', account_number: 'BA-INSURED-APEX' },
+    customer_name: 'Apex Freight Logistics Inc.',
+    due_date: '2026-05-15',
+    premium_amount: 6000.00,
+    premium: 6000.00,
+    fee_amount: 0.00,
+    fee: 0.00,
+    total_amount: 6000.00,
+    total_due: 6000.00,
+    status: 'SCHEDULED',
+    invoice_id: null,
+    invoice_number: null,
+    dimensions: {}
+  },
+  {
+    _id: 'sch-103',
+    installment_id: 'sch-103',
+    installment_number: 3,
+    installment_no: 3,
+    is_down_payment: false,
+    policy_number: 'POL-CA-9942',
+    policy_id: 'POL-CA-9942',
+    billing_policy_snapshot_id: 'SNP-POL-CA-9942',
+    billing_transaction_snapshot_id: 'TX-SNAP-002',
+    billing_account_id: { _id: 'ba-002', customer_name: 'Apex Freight Logistics Inc.', account_number: 'BA-INSURED-APEX' },
+    customer_name: 'Apex Freight Logistics Inc.',
+    due_date: '2026-08-15',
+    premium_amount: 6000.00,
+    premium: 6000.00,
+    fee_amount: 0.00,
+    fee: 0.00,
+    total_amount: 6000.00,
+    total_due: 6000.00,
+    status: 'SCHEDULED',
+    invoice_id: null,
+    invoice_number: null,
+    dimensions: {}
+  },
+  {
+    _id: 'sch-104',
+    installment_id: 'sch-104',
+    installment_number: 4,
+    installment_no: 4,
+    is_down_payment: false,
+    policy_number: 'POL-CA-9942',
+    policy_id: 'POL-CA-9942',
+    billing_policy_snapshot_id: 'SNP-POL-CA-9942',
+    billing_transaction_snapshot_id: 'TX-SNAP-002',
+    billing_account_id: { _id: 'ba-002', customer_name: 'Apex Freight Logistics Inc.', account_number: 'BA-INSURED-APEX' },
+    customer_name: 'Apex Freight Logistics Inc.',
+    due_date: '2026-11-15',
+    premium_amount: 6000.00,
+    premium: 6000.00,
+    fee_amount: 0.00,
+    fee: 0.00,
+    total_amount: 6000.00,
+    total_due: 6000.00,
+    status: 'SCHEDULED',
+    invoice_id: null,
+    invoice_number: null,
+    dimensions: {}
   }
 ];
 
@@ -842,7 +983,7 @@ export const INITIAL_POSTING_RULES = [
     event_code: 'billing.payment.received',
     event_type: 'billing.payment.received',
     status: 'PUBLISHED',
-    description: 'Texas § 4053 Fiduciary deposit into Trust Bank (1010), clears AR (1100), provisions Carrier Net (2010), Broker Comm (2020), MGA Income (4200).',
+    description: 'Texas & 4053 Fiduciary deposit into Trust Bank (1010), clears AR (1100), provisions Carrier Net (2010), Broker Comm (2020), MGA Income (4200).',
     debit_account: '1010',
     credit_account: '1100'
   },
@@ -872,7 +1013,7 @@ export const INITIAL_POSTING_RULES = [
 
 export const INITIAL_CHECKLIST_STEPS = [
   { step_no: 1, step_code: 'SUBLEDGER_RECON', title: 'AR & AP Subledger to General Ledger Reconciliation', status: 'PENDING', completed_at: null },
-  { step_no: 2, step_code: 'BANK_RECON', title: 'Fiduciary Trust Account (Texas § 4053) 2-Pane Bank Reconciliation', status: 'PENDING', completed_at: null },
+  { step_no: 2, step_code: 'BANK_RECON', title: 'Fiduciary Trust Account (Texas & 4053) 2-Pane Bank Reconciliation', status: 'PENDING', completed_at: null },
   { step_no: 3, step_code: 'UPR_AMORTIZATION', title: 'ASC 944 Unearned Premium Reserve Amortization to Earned Revenue', status: 'PENDING', completed_at: null },
   { step_no: 4, step_code: 'LOSS_RESERVES', title: 'Actuarial Loss Reserves & IBNR Certification', status: 'PENDING', completed_at: null },
   { step_no: 5, step_code: 'DEPRECIATION', title: 'Fixed Assets Depreciation & Prepaid Reinsurance Amortization', status: 'PENDING', completed_at: null },
@@ -891,17 +1032,11 @@ export const INITIAL_INVOICES = [
     policy_id: 'POL-TX-8821',
     billing_account_id: { _id: 'ba-001', customer_name: 'Lone Pine Trucking LLC', account_number: 'BA-INSURED-LONEPINE' },
     customer_name: 'Lone Pine Trucking LLC',
-    carrier_name: 'Summit Mutual Insurance Company',
-    broker_name: 'Brightline Agency',
     due_date: '2026-01-07',
     total_amount: 9562.50,
-    premium_amount: 9412.50,
-    fee_amount: 150.00,
     amount_paid: 9562.50,
     balance_due: 0.00,
     status: 'PAID',
-    allocation_status: 'UNALLOCATED',
-    is_allocated: false,
     journal_id: { _id: 'jrn-001', journal_number: 'JRN-2026-0001' },
     lines: [
       { _id: 'line-01', description: 'Installment #1 Commercial Auto Gross Premium', amount: 9412.50, account_code: '1100' },
@@ -958,7 +1093,7 @@ export const INITIAL_JOURNALS = [
     entry_number: 'JRN-2026-0002',
     journal_number: 'JRN-2026-0002',
     rule_code: 'RULE_PMT_RECEIVED',
-    event_name: 'Cash Received & Texas § 4053 Waterfall Allocation',
+    event_name: 'Cash Received & Texas & 4053 Waterfall Allocation',
     posting_date: '2026-01-08',
     description: 'Payment PMT-2026-0001 received via ACH for INV-2026-0001',
     reference_id: 'pmt-001',
@@ -967,7 +1102,7 @@ export const INITIAL_JOURNALS = [
     total_debit: 9562.50,
     total_credit: 9562.50,
     lines: [
-      { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', debit: 9562.50, credit: 0, memo: 'Dr 1010 Texas Fiduciary Premium Trust Bank' },
+      { account_code: '1010', account_name: 'Premium Trust Bank (Texas & 4053)', debit: 9562.50, credit: 0, memo: 'Dr 1010 Texas Fiduciary Premium Trust Bank' },
       { account_code: '1100', account_name: 'Direct Premium Receivable', debit: 0, credit: 9562.50, memo: 'Cr 1100 AR Knock-off' }
     ]
   },

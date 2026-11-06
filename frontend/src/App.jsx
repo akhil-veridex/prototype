@@ -248,7 +248,7 @@ export default function App() {
     { id: 'bill:snapshots', label: 'Policy Snapshots & References', icon: Database },
     { id: 'bill:payments', label: 'Payments & Waterfall', icon: DollarSign },
     { id: 'bill:accounts', label: 'Billing Accounts', icon: CreditCard },
-    { id: 'bill:plans', label: 'Billing Plans (4-Pay)', icon: Sliders },
+    { id: 'bill:plans', label: 'Billing Plans', icon: Sliders },
     { id: 'bill:adjustments', label: 'Adjustments & Waivers', icon: Receipt }
   ];
   const treasNavItems = [

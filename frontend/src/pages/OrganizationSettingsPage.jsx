@@ -161,11 +161,10 @@ export default function OrganizationSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div
               onClick={() => setFormData({ ...formData, tenant_type: 'CARRIER' })}
-              className={`p-4 rounded-xl border cursor-pointer transition ${
-                formData.tenant_type === 'CARRIER'
+              className={`p-4 rounded-xl border cursor-pointer transition ${formData.tenant_type === 'CARRIER'
                   ? 'bg-blue-500/10 border-blue-500/40 text-white shadow-md shadow-blue-500/10'
                   : 'bg-slate-800/40 border-slate-750 text-slate-400 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-bold text-xs text-blue-400">Underwriting Carrier</span>
@@ -178,28 +177,26 @@ export default function OrganizationSettingsPage() {
 
             <div
               onClick={() => setFormData({ ...formData, tenant_type: 'MGA' })}
-              className={`p-4 rounded-xl border cursor-pointer transition ${
-                formData.tenant_type === 'MGA'
+              className={`p-4 rounded-xl border cursor-pointer transition ${formData.tenant_type === 'MGA'
                   ? 'bg-emerald-500/10 border-emerald-500/40 text-white shadow-md shadow-emerald-500/10'
                   : 'bg-slate-800/40 border-slate-750 text-slate-400 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-bold text-xs text-emerald-400">Managing General Agent</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">MGA</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Underwriting & servicing agency: direct/agency billing, Texas § 4053 fiduciary trust cash, commission splits, and carrier monthly settlements.
+                Underwriting & servicing agency: direct/agency billing, Texas & 4053 fiduciary trust cash, commission splits, and carrier monthly settlements.
               </p>
             </div>
 
             <div
               onClick={() => setFormData({ ...formData, tenant_type: 'BROKER' })}
-              className={`p-4 rounded-xl border cursor-pointer transition ${
-                formData.tenant_type === 'BROKER'
+              className={`p-4 rounded-xl border cursor-pointer transition ${formData.tenant_type === 'BROKER'
                   ? 'bg-purple-500/10 border-purple-500/40 text-white shadow-md shadow-purple-500/10'
                   : 'bg-slate-800/40 border-slate-750 text-slate-400 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-bold text-xs text-purple-400">Retail Broker / Agency</span>

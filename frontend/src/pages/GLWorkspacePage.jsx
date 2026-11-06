@@ -70,6 +70,25 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
   const [drilldownActivity, setDrilldownActivity] = useState([]);
   const [drilldownLoading, setDrilldownLoading] = useState(false);
 
+  const openAccountDrilldown = async (acc) => {
+    setDrilldownAccount(acc);
+    setDrilldownLoading(true);
+    try {
+      const res = await authApi.getAccountDetail(acc._id || acc.account_code);
+      if (res && res.data) {
+        setDrilldownAccount(res.data.account || acc);
+        setDrilldownActivity(res.data.activity || []);
+      } else {
+        setDrilldownActivity([]);
+      }
+    } catch (err) {
+      console.error('Failed to load account activity:', err);
+      setDrilldownActivity([]);
+    } finally {
+      setDrilldownLoading(false);
+    }
+  };
+
   // New Posting Rule Modal
   const [showNewRuleModal, setShowNewRuleModal] = useState(false);
   const [newRuleForm, setNewRuleForm] = useState({
@@ -99,25 +118,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
   useEffect(() => {
     loadData();
   }, [currentWorkspace, activeTab]);
-
-  const openAccountDrilldown = async (acc) => {
-    setDrilldownAccount(acc);
-    setDrilldownLoading(true);
-    try {
-      const res = await authApi.getAccountDetail(acc._id || acc.account_code);
-      if (res && res.data) {
-        setDrilldownAccount(res.data.account || acc);
-        setDrilldownActivity(res.data.activity || []);
-      } else {
-        setDrilldownActivity([]);
-      }
-    } catch (err) {
-      console.error('Failed to load account activity:', err);
-      setDrilldownActivity([]);
-    } finally {
-      setDrilldownLoading(false);
-    }
-  };
 
   async function loadData() {
     setLoading(true);
@@ -323,7 +323,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
               <span>Record FX Rate</span>
             </button>
           )}
-          {activeTab !== 'rules' && activeTab !== 'fx' && (
+          {activeTab === 'journals' && (
             <button
               onClick={() => setShowNewJournalModal(true)}
               className="py-2 px-3.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md shadow-brand-600/20 transition"
@@ -353,11 +353,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
       <div className={`flex border-b border-slate-800 space-x-2 overflow-x-auto ${section ? 'hidden' : ''}`}>
         <button
           onClick={() => setActiveTab('journals')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'journals'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'journals'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <FileText className="w-3.5 h-3.5" />
           <span>Journal Register</span>
@@ -365,11 +364,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
 
         <button
           onClick={() => setActiveTab('trial_balance')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'trial_balance'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'trial_balance'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <DollarSign className="w-3.5 h-3.5" />
           <span>Trial Balance</span>
@@ -377,11 +375,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
 
         <button
           onClick={() => setActiveTab('coa')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'coa'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'coa'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>Chart of Accounts (COA)</span>
@@ -389,11 +386,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
 
         <button
           onClick={() => setActiveTab('periods')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'periods'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'periods'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Lock className="w-3.5 h-3.5" />
           <span>Fiscal Periods & Lock</span>
@@ -401,11 +397,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
 
         <button
           onClick={() => setActiveTab('rules')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'rules'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'rules'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Sliders className="w-3.5 h-3.5" />
           <span>Posting Rules</span>
@@ -413,11 +408,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
 
         <button
           onClick={() => setActiveTab('fx')}
-          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'fx'
+          className={`pb-2.5 px-3 text-xs font-semibold transition border-b-2 flex items-center space-x-1.5 shrink-0 ${activeTab === 'fx'
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Globe className="w-3.5 h-3.5" />
           <span>Exchange Rates</span>
@@ -436,7 +430,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                 <tr>
                   <th className="py-3 px-5">Journal #</th>
                   <th className="py-3 px-5">Posting Date</th>
-                  <th className="py-3 px-5">Source / Ref</th>
                   <th className="py-3 px-5">Memo</th>
                   <th className="py-3 px-5 text-right">Debit</th>
                   <th className="py-3 px-5 text-right">Credit</th>
@@ -447,26 +440,23 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
               <tbody className="divide-y divide-slate-800 text-slate-300">
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-slate-500">Loading journals...</td>
+                    <td colSpan="7" className="py-8 text-center text-slate-500">Loading journals...</td>
                   </tr>
                 ) : journals.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-slate-500">No journal entries posted yet.</td>
+                    <td colSpan="7" className="py-8 text-center text-slate-500">No journal entries posted yet.</td>
                   </tr>
                 ) : (
                   journals.map((j) => (
                     <tr key={j._id} className="hover:bg-slate-850/50 transition">
                       <td className="py-3.5 px-5 font-mono font-bold text-brand-400">{j.journal_number}</td>
                       <td className="py-3.5 px-5 font-mono text-slate-400">{new Date(j.posting_date).toISOString().slice(0, 10)}</td>
-                      <td className="py-3.5 px-5">
-                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">
-                          {j.source_module}
-                        </span>
-                        {j.reference_id && (
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">{j.reference_id}</div>
+                      <td className="py-3.5 px-5 max-w-md text-slate-200">
+                        <div className="font-medium text-slate-200">{j.description || j.memo || j.event_name || 'Operational Journal'}</div>
+                        {j.event_name && j.event_name !== j.description && (
+                          <div className="text-[11px] text-slate-400 mt-0.5">{j.event_name}</div>
                         )}
                       </td>
-                      <td className="py-3.5 px-5 max-w-xs truncate text-slate-200">{j.memo}</td>
                       <td className="py-3.5 px-5 text-right font-mono font-semibold text-emerald-400">
                         ${parseFloat(j.total_debit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
@@ -475,11 +465,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                       </td>
                       <td className="py-3.5 px-5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                            j.status === 'POSTED'
+                          className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${j.status === 'POSTED'
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                               : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          }`}
+                            }`}
                         >
                           {j.status}
                         </span>
@@ -581,7 +570,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                             <span className="text-white font-medium">{a.account_name}</span>
                             {a.is_fiduciary && (
                               <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-mono">
-                                Texas § 4053
+                                Texas & 4053
                               </span>
                             )}
                           </td>
@@ -669,7 +658,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                           <span>{a.account_name}</span>
                           {a.is_fiduciary && (
                             <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-mono">
-                              Texas § 4053
+                              Texas & 4053
                             </span>
                           )}
                         </div>
@@ -752,11 +741,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                         </td>
                         <td className="py-3.5 px-5">
                           <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                              isLocked
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${isLocked
                                 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            }`}
+                              }`}
                           >
                             {p.status}
                           </span>
@@ -764,11 +752,10 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                         <td className="py-3.5 px-5 text-right">
                           <button
                             onClick={() => handleTogglePeriodLock(p._id, p.status)}
-                            className={`py-1.5 px-3 rounded-md text-[11px] font-semibold flex items-center space-x-1.5 ml-auto whitespace-nowrap border transition ${
-                              isLocked
+                            className={`py-1.5 px-3 rounded-md text-[11px] font-semibold flex items-center space-x-1.5 ml-auto whitespace-nowrap border transition ${isLocked
                                 ? 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
                                 : 'bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border-rose-200 hover:border-rose-300'
-                            }`}
+                              }`}
                           >
                             {isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                             <span>{isLocked ? 'Re-open Period' : 'Hard Close Period'}</span>
@@ -900,19 +887,18 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                 <div className="flex items-center space-x-2">
                   <span className="font-mono font-bold text-base text-brand-400">{selectedJournal.journal_number}</span>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      selectedJournal.status === 'POSTED'
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${selectedJournal.status === 'POSTED'
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    }`}
+                      }`}
                   >
                     {selectedJournal.status}
                   </span>
                 </div>
-                <div className="text-xs text-slate-400 mt-1">{selectedJournal.memo}</div>
+                <div className="text-xs text-slate-300 mt-1">{selectedJournal.description || selectedJournal.memo || selectedJournal.event_name}</div>
                 <div className="flex space-x-4 text-[11px] font-mono text-slate-500 mt-2">
                   <span>Posting Date: {new Date(selectedJournal.posting_date).toISOString().slice(0, 10)}</span>
-                  <span>Source: {selectedJournal.source_module}</span>
+                  <span>Source: {selectedJournal.source_module || selectedJournal.rule_code || 'General Ledger'}</span>
                   {selectedJournal.reference_id && <span>Ref: {selectedJournal.reference_id}</span>}
                 </div>
               </div>
@@ -1091,7 +1077,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                   className="rounded bg-slate-800 border-slate-700 text-brand-500"
                 />
                 <label htmlFor="fiduciaryCheck" className="text-xs text-slate-300">
-                  Statutory Fiduciary Account (Texas § 4053)
+                  Statutory Fiduciary Account (Texas & 4053)
                 </label>
               </div>
 
@@ -1207,7 +1193,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
                   <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-xs">{drilldownAccount.account_type}</span>
                   {drilldownAccount.is_fiduciary && (
                     <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono">
-                      Texas § 4053
+                      Texas & 4053
                     </span>
                   )}
                 </div>

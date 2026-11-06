@@ -294,7 +294,7 @@ export default function DimensionsPage() {
           <div className="text-2xl font-bold font-mono text-emerald-400">
             {dimensions.filter((d) => d.is_system).length}
           </div>
-          <div className="text-[11px] text-slate-500">Texas § 4053 and ASC 944 compliance</div>
+          <div className="text-[11px] text-slate-500">Texas & 4053 and ASC 944 compliance</div>
         </div>
       </div>
 
@@ -433,11 +433,10 @@ export default function DimensionsPage() {
                       </td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            dim.status === 'ACTIVE'
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${dim.status === 'ACTIVE'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                               : 'bg-slate-700 text-slate-400'
-                          }`}
+                            }`}
                         >
                           {dim.status}
                         </span>
