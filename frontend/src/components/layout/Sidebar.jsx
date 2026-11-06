@@ -28,6 +28,15 @@ export default function Sidebar({ groups, activeTab, onSelect, isCollapsed, onTo
     } catch { /* ignore */ }
   }, []);
 
+  // Keep the group that owns the current page open
+  useEffect(() => {
+    groups.forEach(g => {
+      if (g.items.some(i => i.id === activeTab)) {
+        setExpanded(prev => (prev[g.id] ? prev : { ...prev, [g.id]: true }));
+      }
+    });
+  }, [activeTab, groups]);
+
   const handleMouseDownResize = (e) => {
     e.preventDefault();
     const onMouseMove = (moveEvent) => {
@@ -51,14 +60,7 @@ export default function Sidebar({ groups, activeTab, onSelect, isCollapsed, onTo
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  // Keep the group that owns the current page open
-  useEffect(() => {
-    groups.forEach(g => {
-      if (g.items.some(i => i.id === activeTab)) {
-        setExpanded(prev => (prev[g.id] ? prev : { ...prev, [g.id]: true }));
-      }
-    });
-  }, [activeTab, groups]);
+
 
   return (
     <aside className="sidebar" aria-label="Primary Navigation">

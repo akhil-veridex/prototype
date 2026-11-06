@@ -25,6 +25,20 @@ import {
 import { commissionsApi, rulesApi, dimensionsApi, billingApi, authApi } from '../services/api';
 import ModalClose from '../components/ModalClose';
 
+const defaultCOA = [
+    { account_code: '1000', account_name: 'Operating Cash', account_type: 'ASSET' },
+    { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', account_type: 'ASSET' },
+    { account_code: '1020', account_name: 'Cash - Claims Escrow Account', account_type: 'ASSET' },
+    { account_code: '1100', account_name: 'Premium Receivable', account_type: 'ASSET' },
+    { account_code: '2010', account_name: 'Due to Carrier', account_type: 'LIABILITY' },
+    { account_code: '2020', account_name: 'Broker Commission Payable', account_type: 'LIABILITY' },
+    { account_code: '2190', account_name: 'Unapplied Cash Suspense', account_type: 'LIABILITY' },
+    { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR - ASC 944)', account_type: 'LIABILITY' },
+    { account_code: '4000', account_name: 'Earned Premium Revenue', account_type: 'REVENUE' },
+    { account_code: '4100', account_name: 'Policy Fee Income', account_type: 'REVENUE' },
+    { account_code: '4200', account_name: 'MGA Commission Income', account_type: 'REVENUE' }
+  ];
+
 export default function CommissionsWorkspacePage({ section }) {
   // `section` is driven by the sidebar; without it the page shows its own tab bar.
   const [activeSubtab, setActiveSubtab] = useState(section || 'overview');
@@ -50,19 +64,7 @@ export default function CommissionsWorkspacePage({ section }) {
   const [chainPreview, setChainPreview] = useState(null);
   const [glAccounts, setGlAccounts] = useState([]);
 
-  const defaultCOA = [
-    { account_code: '1000', account_name: 'Operating Cash', account_type: 'ASSET' },
-    { account_code: '1010', account_name: 'Premium Trust Bank (Texas § 4053)', account_type: 'ASSET' },
-    { account_code: '1020', account_name: 'Cash - Claims Escrow Account', account_type: 'ASSET' },
-    { account_code: '1100', account_name: 'Premium Receivable', account_type: 'ASSET' },
-    { account_code: '2010', account_name: 'Due to Carrier', account_type: 'LIABILITY' },
-    { account_code: '2020', account_name: 'Broker Commission Payable', account_type: 'LIABILITY' },
-    { account_code: '2190', account_name: 'Unapplied Cash Suspense', account_type: 'LIABILITY' },
-    { account_code: '2200', account_name: 'Unearned Premium Reserve (UPR - ASC 944)', account_type: 'LIABILITY' },
-    { account_code: '4000', account_name: 'Earned Premium Revenue', account_type: 'REVENUE' },
-    { account_code: '4100', account_name: 'Policy Fee Income', account_type: 'REVENUE' },
-    { account_code: '4200', account_name: 'MGA Commission Income', account_type: 'REVENUE' }
-  ];
+
 
   // Broker Disburse Modal State
   const [showBrokerModal, setShowBrokerModal] = useState(false);
@@ -73,6 +75,101 @@ export default function CommissionsWorkspacePage({ section }) {
   // Commission Allocation Modal State
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationJournalLines, setAllocationJournalLines] = useState([]);
+
+// Settlement Disburse Modal State
+  const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [selectedSettlementStmt, setSelectedSettlementStmt] = useState(null);
+  const [settlementPaymentRef, setSettlementPaymentRef] = useState('');
+  const [settlementJournalLines, setSettlementJournalLines] = useState([]);
+
+// Forms & Modal states
+  const [newAgreement, setNewAgreement] = useState({
+    agreement_code: 'AGR-SUMMIT-HARBOR',
+    name: 'Summit Mutual MGA Agreement',
+    contract_reference: 'SUMMIT-2026',
+    payer_party_id: 'CARRIER-SUMMIT',
+    payer_party_name: 'Summit Mutual',
+    payee_party_id: 'MGA-HARBOR',
+    payee_party_name: 'Harbor Underwriting MGA',
+    agreement_type: 'CARRIER_TO_MGA',
+    effective_from: '2026-01-01'
+  });
+
+  const [sweepForm, setSweepForm] = useState({
+    fiduciary_account_id: '',
+    amount: '3765.00',
+    notes: 'Texas § 4053 MGA Earned Commission Sweep'
+  });
+
+  const [settlementForm, setSettlementForm] = useState({
+    fiduciary_account_id: '',
+    carrier_party_id: 'CARRIER-SUMMIT',
+    carrier_name: 'Summit Mutual Insurance Company',
+    period: '2026-07'
+  });
+  const [settlementPreview, setSettlementPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [disbursingStatementId, setDisbursingStatementId] = useState(null);
+
+  // Dynamic Commission & Carrier Share Allocation State (Step 1.3)
+  const [allocating, setAllocating] = useState(false);
+  const [dimensionContext, setDimensionContext] = useState(null);
+  const [invoicesList, setInvoicesList] = useState([]);
+  const [showAdvancedDimensions, setShowAdvancedDimensions] = useState(false);
+  const [allocationForm, setAllocationForm] = useState({
+    policy_reference: 'POL-TX-8821',
+    invoice_reference: 'INV-2026-00001',
+    installment_premium: 9412.50,
+    carrier_id: '',
+    carrier_name: '',
+    broker_id: '',
+    broker_name: '',
+    carrier_rate: 80.0,
+    broker_rate: 10.0,
+    mga_rate: 10.0,
+    cost_center: 'CC-OPS',
+    company_code: 'COMP-001',
+    custom_dimension_key: '',
+    custom_dimension_value: ''
+  });
+
+  // Dynamic Bordereau & Carrier Communication State (Subtab 8)
+  const [transmittingRunId, setTransmittingRunId] = useState(null);
+  const [bordereauForm, setBordereauForm] = useState({
+    carrier_id: 'CARRIER-SUMMIT',
+    carrier_name: 'Summit Mutual Insurance Company',
+    reporting_period: '2026-07',
+    risk_state: 'TX',
+    line_of_business: 'COMMERCIAL_AUTO',
+    reporting_frequency: 'MONTHLY',
+    transmission_protocol: 'ACORD_XML_EDI'
+  });
+
+  // Top-Level Effects (Strict Rules of Hooks)
+useEffect(() => {
+    authApi.getAccounts().then(res => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setGlAccounts(res.data);
+      }
+    }).catch(() => {});
+  }, []);
+
+useEffect(() => {
+    if (section) {
+      setActiveSubtab(section);
+      setError(null);
+      setSuccessMsg(null);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (activeSubtab === 'overview') {
+      loadOverview();
+    } else {
+      loadSubtabData(activeSubtab);
+    }
+  }, [activeSubtab]);
+
 
   const openAllocationModal = () => {
     const prem = parseFloat(allocationForm.installment_premium) || 9412.50;
@@ -206,20 +303,6 @@ export default function CommissionsWorkspacePage({ section }) {
       setAllocating(false);
     }
   };
-
-  // Settlement Disburse Modal State
-  const [showSettlementModal, setShowSettlementModal] = useState(false);
-  const [selectedSettlementStmt, setSelectedSettlementStmt] = useState(null);
-  const [settlementPaymentRef, setSettlementPaymentRef] = useState('');
-  const [settlementJournalLines, setSettlementJournalLines] = useState([]);
-
-  useEffect(() => {
-    authApi.getAccounts().then(res => {
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        setGlAccounts(res.data);
-      }
-    }).catch(() => {});
-  }, []);
 
   const openBrokerDisburseModal = (tx) => {
     setSelectedBrokerTx(tx);
@@ -401,69 +484,6 @@ export default function CommissionsWorkspacePage({ section }) {
     }
   };
 
-  // Forms & Modal states
-  const [newAgreement, setNewAgreement] = useState({
-    agreement_code: 'AGR-SUMMIT-HARBOR',
-    name: 'Summit Mutual MGA Agreement',
-    contract_reference: 'SUMMIT-2026',
-    payer_party_id: 'CARRIER-SUMMIT',
-    payer_party_name: 'Summit Mutual',
-    payee_party_id: 'MGA-HARBOR',
-    payee_party_name: 'Harbor Underwriting MGA',
-    agreement_type: 'CARRIER_TO_MGA',
-    effective_from: '2026-01-01'
-  });
-
-  const [sweepForm, setSweepForm] = useState({
-    fiduciary_account_id: '',
-    amount: '3765.00',
-    notes: 'Texas § 4053 MGA Earned Commission Sweep'
-  });
-
-  const [settlementForm, setSettlementForm] = useState({
-    fiduciary_account_id: '',
-    carrier_party_id: 'CARRIER-SUMMIT',
-    carrier_name: 'Summit Mutual Insurance Company',
-    period: '2026-07'
-  });
-  const [settlementPreview, setSettlementPreview] = useState(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [disbursingStatementId, setDisbursingStatementId] = useState(null);
-
-  // Dynamic Commission & Carrier Share Allocation State (Step 1.3)
-  const [allocating, setAllocating] = useState(false);
-  const [dimensionContext, setDimensionContext] = useState(null);
-  const [invoicesList, setInvoicesList] = useState([]);
-  const [showAdvancedDimensions, setShowAdvancedDimensions] = useState(false);
-  const [allocationForm, setAllocationForm] = useState({
-    policy_reference: 'POL-TX-8821',
-    invoice_reference: 'INV-2026-00001',
-    installment_premium: 9412.50,
-    carrier_id: '',
-    carrier_name: '',
-    broker_id: '',
-    broker_name: '',
-    carrier_rate: 80.0,
-    broker_rate: 10.0,
-    mga_rate: 10.0,
-    cost_center: 'CC-OPS',
-    company_code: 'COMP-001',
-    custom_dimension_key: '',
-    custom_dimension_value: ''
-  });
-
-  // Dynamic Bordereau & Carrier Communication State (Subtab 8)
-  const [transmittingRunId, setTransmittingRunId] = useState(null);
-  const [bordereauForm, setBordereauForm] = useState({
-    carrier_id: 'CARRIER-SUMMIT',
-    carrier_name: 'Summit Mutual Insurance Company',
-    reporting_period: '2026-07',
-    risk_state: 'TX',
-    line_of_business: 'COMMERCIAL_AUTO',
-    reporting_frequency: 'MONTHLY',
-    transmission_protocol: 'ACORD_XML_EDI'
-  });
-
   const handleAllocateShares = async () => {
     try {
       setAllocating(true);
@@ -503,7 +523,7 @@ export default function CommissionsWorkspacePage({ section }) {
   };
 
   // Load Overview Data
-  const loadOverview = async () => {
+  async function loadOverview() {
     try {
       setLoading(true);
       setError(null);
@@ -518,7 +538,7 @@ export default function CommissionsWorkspacePage({ section }) {
     }
   };
 
-  const loadSubtabData = async (subtab) => {
+  async function loadSubtabData(subtab) {
     try {
       setLoading(true);
       setError(null);
@@ -626,22 +646,6 @@ export default function CommissionsWorkspacePage({ section }) {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (section) {
-      setActiveSubtab(section);
-      setError(null);
-      setSuccessMsg(null);
-    }
-  }, [section]);
-
-  useEffect(() => {
-    if (activeSubtab === 'overview') {
-      loadOverview();
-    } else {
-      loadSubtabData(activeSubtab);
-    }
-  }, [activeSubtab]);
 
   // Seed Canonical Chain
   const handleSeedCanonical = async () => {
@@ -767,7 +771,7 @@ export default function CommissionsWorkspacePage({ section }) {
   };
 
   // Load Settlement Preview
-  const loadSettlementPreview = async (carrierId, period, fidId) => {
+  async function loadSettlementPreview(carrierId, period, fidId) {
     try {
       setLoadingPreview(true);
       const cId = carrierId || settlementForm.carrier_party_id || 'CARRIER-SUMMIT';

@@ -145,6 +145,40 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
     { account_code: '1100', debit: '0.00', credit: '9562.50', memo: 'Cr 1100 AR (Waterfall Cleared)' }
   ]);
 
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    billing_account_id: '',
+    adjustment_type: 'FEE_WAIVER',
+    amount: '150.00',
+    reason_code: 'BROKER_RELATIONSHIP',
+    reason_description: 'Courtesy fee waiver for Lone Pine Trucking'
+  });
+
+  const [newSnapshotForm, setNewSnapshotForm] = useState({
+    policy_number: 'POL-TX-9902',
+    source_entity_id: 'POL-TX-9902',
+    source_version: 'v1.0',
+    effective_date: '2026-07-01',
+    expiration_date: '2027-07-01',
+    line_of_business: 'COMMERCIAL_AUTO',
+    total_premium: '45000.00',
+    total_fees: '250.00',
+    total_taxes: '0.00',
+    status: 'BOUND',
+    payer_party_id: '',
+    insured_party_id: '',
+    carrier_party_id: ''
+  });
+
+  const [newFinanceForm, setNewFinanceForm] = useState({
+    billing_account_id: '',
+    finance_company_party_id: '',
+    agreement_number: 'PFA-TX-2026-001',
+    amount_financed: '28237.50',
+    down_payment: '9412.50',
+    interest_rate: '8.50',
+    notes: 'Imperial PFS Texas Commercial Auto Financing'
+  });
+
   const handlePaymentJournalLineChange = (index, field, value) => {
     setPaymentJournalLines((prev) => {
       const next = [...prev];
@@ -280,40 +314,6 @@ export default function BillingWorkspacePage({ section, onSectionChange }) {
       ['ISSUED', 'PARTIALLY_PAID'].includes(i.status) &&
       parseDecimalValue(i.balance_due) > 0
   );
-  const [adjustmentForm, setAdjustmentForm] = useState({
-    billing_account_id: '',
-    adjustment_type: 'FEE_WAIVER',
-    amount: '150.00',
-    reason_code: 'BROKER_RELATIONSHIP',
-    reason_description: 'Courtesy fee waiver for Lone Pine Trucking'
-  });
-
-  const [newSnapshotForm, setNewSnapshotForm] = useState({
-    policy_number: 'POL-TX-9902',
-    source_entity_id: 'POL-TX-9902',
-    source_version: 'v1.0',
-    effective_date: '2026-07-01',
-    expiration_date: '2027-07-01',
-    line_of_business: 'COMMERCIAL_AUTO',
-    total_premium: '45000.00',
-    total_fees: '250.00',
-    total_taxes: '0.00',
-    status: 'BOUND',
-    payer_party_id: '',
-    insured_party_id: '',
-    carrier_party_id: ''
-  });
-
-  const [newFinanceForm, setNewFinanceForm] = useState({
-    billing_account_id: '',
-    finance_company_party_id: '',
-    agreement_number: 'PFA-TX-2026-001',
-    amount_financed: '28237.50',
-    down_payment: '9412.50',
-    interest_rate: '8.50',
-    notes: 'Imperial PFS Texas Commercial Auto Financing'
-  });
-
   const formatMoney = (val) => {
     if (val === null || val === undefined) return '0.00';
     if (typeof val === 'object' && val.$numberDecimal) return Number(val.$numberDecimal).toFixed(2);

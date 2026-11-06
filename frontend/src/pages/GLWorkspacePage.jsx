@@ -70,25 +70,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
   const [drilldownActivity, setDrilldownActivity] = useState([]);
   const [drilldownLoading, setDrilldownLoading] = useState(false);
 
-  const openAccountDrilldown = async (acc) => {
-    setDrilldownAccount(acc);
-    setDrilldownLoading(true);
-    try {
-      const res = await authApi.getAccountDetail(acc._id || acc.account_code);
-      if (res && res.data) {
-        setDrilldownAccount(res.data.account || acc);
-        setDrilldownActivity(res.data.activity || []);
-      } else {
-        setDrilldownActivity([]);
-      }
-    } catch (err) {
-      console.error('Failed to load account activity:', err);
-      setDrilldownActivity([]);
-    } finally {
-      setDrilldownLoading(false);
-    }
-  };
-
   // New Posting Rule Modal
   const [showNewRuleModal, setShowNewRuleModal] = useState(false);
   const [newRuleForm, setNewRuleForm] = useState({
@@ -118,6 +99,25 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
   useEffect(() => {
     loadData();
   }, [currentWorkspace, activeTab]);
+
+  const openAccountDrilldown = async (acc) => {
+    setDrilldownAccount(acc);
+    setDrilldownLoading(true);
+    try {
+      const res = await authApi.getAccountDetail(acc._id || acc.account_code);
+      if (res && res.data) {
+        setDrilldownAccount(res.data.account || acc);
+        setDrilldownActivity(res.data.activity || []);
+      } else {
+        setDrilldownActivity([]);
+      }
+    } catch (err) {
+      console.error('Failed to load account activity:', err);
+      setDrilldownActivity([]);
+    } finally {
+      setDrilldownLoading(false);
+    }
+  };
 
   async function loadData() {
     setLoading(true);

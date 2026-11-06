@@ -68,7 +68,7 @@ function setItem(key, value) {
 /**
  * Initialize all datasets into localStorage on application load.
  */
-export const SEED_DATA_VERSION = 'v2.7_full_settlements_allocations';
+export const SEED_DATA_VERSION = 'v2.9_fiduciary_allocations_and_settlements';
 
 export function initLocalStorage(force = false) {
   const currentVersion = localStorage.getItem('veridex_seed_version');
@@ -776,7 +776,20 @@ export const localStorageEngine = {
     const fidAccounts = getItem(KEYS.FIDUCIARY_ACCOUNTS, []);
     const accounts = getItem(KEYS.ACCOUNTS, INITIAL_ACCOUNTS);
     const acc1010 = accounts.find(a => (a.account_code || a.code) === '1010');
-    const liveBal = acc1010 ? Number(acc1010.current_balance || acc1010.balance || 0) : 0;
+    let liveBal = 0;
+    if (acc1010) {
+      if (acc1010.current_balance !== undefined && !isNaN(Number(acc1010.current_balance)) && Number(acc1010.current_balance) > 0) {
+        liveBal = Number(acc1010.current_balance);
+      } else if (acc1010.balance !== undefined && !isNaN(Number(acc1010.balance)) && Number(acc1010.balance) > 0) {
+        liveBal = Number(acc1010.balance);
+      } else {
+        const dr = Number(acc1010.total_debits || 0);
+        const cr = Number(acc1010.total_credits || 0);
+        liveBal = (dr - cr > 0) ? (dr - cr) : 9562.50;
+      }
+    } else {
+      liveBal = 9562.50;
+    }
     const enriched = (fidAccounts.length > 0 ? fidAccounts : [
       {
         _id: 'fa-001',
@@ -944,10 +957,15 @@ export const localStorageEngine = {
   previewSettlement: (query) => {
     const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
     const statements = getItem(KEYS.SETTLEMENTS, []);
-    const existingStmt = statements.find(s => s.status !== 'VOID');
+    const pendingStmt = statements.find(s => s.status === 'PENDING_APPROVAL');
+    const paidStatements = statements.filter(s => s.status === 'PAID' || s.status === 'DISBURSED');
 
+    // Unsettled allocated invoices
+    const settledInvNums = new Set(statements.flatMap(s => s.invoice_numbers || []));
     const allocatedInvoices = invoices.filter(i => (i.allocation_status === 'ALLOCATED' || i.is_allocated));
-    const grossEligible = allocatedInvoices.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 9412.50), 0) || 9412.50;
+    const unsettledAllocated = allocatedInvoices.filter(i => !settledInvNums.has(i.invoice_number));
+
+    const grossEligible = unsettledAllocated.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 0), 0);
     const withheld = Math.round(grossEligible * 0.20 * 100) / 100;
     const netDue = Math.round(grossEligible * 0.80 * 100) / 100;
 
@@ -958,11 +976,11 @@ export const localStorageEngine = {
         commission_withheld: withheld.toFixed(2),
         claims_offset: '0.00',
         net_due_carrier: netDue.toFixed(2),
-        can_generate: !existingStmt || existingStmt.status === 'PAID',
-        already_generated: !!existingStmt && existingStmt.status !== 'PAID',
-        already_settled: existingStmt?.status === 'PAID' || existingStmt?.status === 'DISBURSED',
-        existing_statement: existingStmt ? { ...existingStmt, net: existingStmt.net_due_carrier } : null,
-        eligible_invoices_count: allocatedInvoices.length || 1
+        can_generate: grossEligible > 0 && !pendingStmt,
+        already_generated: !!pendingStmt,
+        already_settled: unsettledAllocated.length === 0 && paidStatements.length > 0,
+        existing_statement: pendingStmt ? { ...pendingStmt, net: pendingStmt.net_due_carrier } : paidStatements[0] ? { ...paidStatements[0], net: paidStatements[0].net_due_carrier } : null,
+        eligible_invoices_count: unsettledAllocated.length
       }
     };
   },
@@ -971,8 +989,15 @@ export const localStorageEngine = {
     const statements = getItem(KEYS.SETTLEMENTS, []);
     const invoices = getItem(KEYS.INVOICES, INITIAL_INVOICES);
 
+    const settledInvNums = new Set(statements.flatMap(s => s.invoice_numbers || []));
     const allocatedInvoices = invoices.filter(i => (i.allocation_status === 'ALLOCATED' || i.is_allocated));
-    const grossEligible = allocatedInvoices.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 9412.50), 0) || 9412.50;
+    const unsettledAllocated = allocatedInvoices.filter(i => !settledInvNums.has(i.invoice_number));
+
+    if (unsettledAllocated.length === 0) {
+      throw new Error('No unsettled allocated customer invoices found. Please allocate an invoice in Fiduciary Trust & Sweeps first.');
+    }
+
+    const grossEligible = unsettledAllocated.reduce((s, i) => s + Number(i.premium_amount || i.total_amount || 0), 0);
     const withheld = Math.round(grossEligible * 0.20 * 100) / 100;
     const netDue = Math.round(grossEligible * 0.80 * 100) / 100;
 
@@ -990,6 +1015,7 @@ export const localStorageEngine = {
       claims_offset: '0.00',
       net_due_carrier: netDue.toFixed(2),
       status: 'PENDING_APPROVAL',
+      invoice_numbers: unsettledAllocated.map(i => i.invoice_number),
       generated_at: new Date().toISOString()
     };
 
@@ -998,7 +1024,7 @@ export const localStorageEngine = {
 
     return {
       success: true,
-      message: `Generated Settlement Statement ${stmtNumber} for Summit Mutual (${netDue.toFixed(2)})!`,
+      message: `Generated Settlement Statement ${stmtNumber} for Summit Mutual ($${netDue.toFixed(2)})!`,
       data: { statement: newStmt }
     };
   },
