@@ -10,6 +10,7 @@ import {
   INITIAL_TRANSACTION_SNAPSHOTS,
   INITIAL_FINANCE_AGREEMENTS,
   INITIAL_FISCAL_PERIODS,
+  buildFiscalPeriod,
   INITIAL_POSTING_RULES,
   INITIAL_CHECKLIST_STEPS,
   INITIAL_INVOICES,
@@ -35,6 +36,7 @@ const KEYS = {
   FINANCE_AGREEMENTS: 'veridex_finance_agreements',
   JOURNALS: 'veridex_journals',
   FISCAL_PERIODS: 'veridex_fiscal_periods',
+  PERIOD_AUDIT: 'veridex_period_audit',
   POSTING_RULES: 'veridex_posting_rules',
   CHECKLIST: 'veridex_checklist',
   FIDUCIARY_ACCOUNTS: 'veridex_fiduciary_accounts',
@@ -98,6 +100,7 @@ export function initLocalStorage(force = false) {
     setItem(KEYS.FINANCE_AGREEMENTS, INITIAL_FINANCE_AGREEMENTS);
     setItem(KEYS.JOURNALS, INITIAL_JOURNALS);
     setItem(KEYS.FISCAL_PERIODS, INITIAL_FISCAL_PERIODS);
+    setItem(KEYS.PERIOD_AUDIT, []);
     setItem(KEYS.POSTING_RULES, INITIAL_POSTING_RULES);
     setItem(KEYS.CHECKLIST, INITIAL_CHECKLIST_STEPS);
     setItem(KEYS.FIDUCIARY_ACCOUNTS, [
@@ -158,6 +161,203 @@ export function initLocalStorage(force = false) {
 // Auto-run initialization
 initLocalStorage();
 
+/* =====================================================================
+   FISCAL PERIODS - month-close gate modelled on Southlake's PeriodClosureService
+   - a period is a calendar month (year + month) with status OPEN | CLOSED
+   - close(year, month, 'soft' | 'hard'): already-closed periods are rejected
+   - reopen(year, month, reason): soft closes only; a hard close is permanent
+   - reopen keeps close_type / closed_at / closed_by as history until the next close
+   - assertOpen: every action that posts a journal calls it first
+   - every close / reopen is written to the activity trail
+   ===================================================================== */
+const todayIso = () => new Date().toISOString().split('T')[0];
+const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const currentUserLabel = () => getItem(KEYS.USER, INITIAL_USER)?.name || 'Demo User';
+
+function dateKey(d) {
+  return String(d || '').slice(0, 10);
+}
+
+function formatPeriodLabel(year, month) {
+  return `${MONTH_FULL[month - 1] || month} ${year}`;
+}
+
+/** Brings any stored period (including earlier prototype shapes) to the current shape. */
+function normalizePeriod(p) {
+  const year = Number(p.period_year ?? String(p.start_date).slice(0, 4));
+  const month = Number(p.period_month ?? String(p.start_date).slice(5, 7));
+  const closed = p.status === 'CLOSED' || p.status === 'HARD_CLOSED' || p.status === 'LOCKED';
+  const code = `${year}-${String(month).padStart(2, '0')}`;
+  return {
+    ...p,
+    _id: p._id || `fp-${code}`,
+    fiscal_period_id: p._id || `fp-${code}`,
+    period_year: year,
+    period_month: month,
+    period_code: code,
+    period_name: formatPeriodLabel(year, month),
+    fiscal_year: String(year),
+    start_date: dateKey(p.start_date),
+    end_date: dateKey(p.end_date),
+    status: closed ? 'CLOSED' : 'OPEN',
+    close_type: p.close_type === 'hard' || p.close_type === 'soft' ? p.close_type : (closed ? 'soft' : null),
+    closed_at: p.closed_at || null,
+    closed_by: p.closed_by || null,
+    is_locked: closed
+  };
+}
+
+function readPeriods() {
+  return getItem(KEYS.FISCAL_PERIODS, INITIAL_FISCAL_PERIODS)
+    .map(normalizePeriod)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+}
+function writePeriods(periods) { setItem(KEYS.FISCAL_PERIODS, periods); }
+
+function addActivity(periodId, action, description) {
+  const log = getItem(KEYS.PERIOD_AUDIT, []);
+  log.unshift({
+    _id: `pa-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    fiscal_period_id: periodId,
+    action,
+    description,
+    user: currentUserLabel(),
+    at: new Date().toISOString()
+  });
+  setItem(KEYS.PERIOD_AUDIT, log);
+}
+
+/** Journal totals: seeded rows use total_debit/total_credit, engine-posted rows total_debits/total_credits. */
+const jDebit = (j) => Number(j.total_debits ?? j.total_debit ?? (j.lines || []).reduce((t, l) => t + Number(l.debit || 0), 0));
+const jCredit = (j) => Number(j.total_credits ?? j.total_credit ?? (j.lines || []).reduce((t, l) => t + Number(l.credit || 0), 0));
+
+function journalsIn(p) {
+  return getItem(KEYS.JOURNALS, []).filter(j => dateKey(j.posting_date) >= p.start_date && dateKey(j.posting_date) <= p.end_date);
+}
+
+function periodStats(p) {
+  const journals = journalsIn(p);
+  return {
+    journal_count: journals.length,
+    total_debits: Math.round(journals.reduce((s, j) => s + jDebit(j), 0) * 100) / 100,
+    total_credits: Math.round(journals.reduce((s, j) => s + jCredit(j), 0) * 100) / 100
+  };
+}
+
+function findPeriodForDate(date, periods = readPeriods()) {
+  const d = dateKey(date);
+  return periods.find(p => d >= p.start_date && d <= p.end_date) || null;
+}
+
+/** The record for a year/month, or a new OPEN one (Southlake creates the row on first close). */
+function ensurePeriod(year, month) {
+  const periods = readPeriods();
+  const found = periods.find(p => p.period_year === year && p.period_month === month);
+  if (found) return found;
+  const created = buildFiscalPeriod(year, month - 1, 'OPEN');
+  writePeriods([...periods, created]);
+  return normalizePeriod(created);
+}
+
+/** Throws if the period is closed. Every write path that must respect month-close calls this. */
+function assertOpen(year, month) {
+  const p = ensurePeriod(year, month);
+  if (p.status === 'CLOSED') {
+    throw new Error(`Accounting period '${formatPeriodLabel(year, month)}' is closed. This action cannot be completed.`);
+  }
+  return p;
+}
+
+/** Guard used by posting: resolves the period of a date (creating it if needed) and requires it open. */
+function assertPostingAllowed(date = todayIso()) {
+  const d = new Date(dateKey(date) + 'T00:00:00Z');
+  return assertOpen(d.getUTCFullYear(), d.getUTCMonth() + 1);
+}
+
+/** Brings stored period data up to the current shape and clears data from the earlier checklist version. */
+function ensureFiscalPeriodData() {
+  const raw = getItem(KEYS.FISCAL_PERIODS, null);
+  const stale = !raw || raw.length === 0 || raw.some(p => p.period_year === undefined);
+  if (stale) {
+    setItem(KEYS.FISCAL_PERIODS, INITIAL_FISCAL_PERIODS);
+    setItem(KEYS.PERIOD_AUDIT, []);
+  }
+  writePeriods(readPeriods());
+  try {
+    localStorage.removeItem('veridex_period_close_tasks');
+    localStorage.removeItem('veridex_tb_snapshots');
+  } catch { /* ignore */ }
+  // Seeded closed periods carry a matching activity entry.
+  const log = getItem(KEYS.PERIOD_AUDIT, []);
+  readPeriods().filter(p => p.status === 'CLOSED' && !log.some(a => a.fiscal_period_id === p._id)).forEach(p => {
+    log.push({
+      _id: `pa-seed-${p._id}`,
+      fiscal_period_id: p._id,
+      action: 'close',
+      description: `${p.close_type === 'hard' ? 'Hard' : 'Soft'} closed period ${p.period_name}`,
+      user: p.closed_by || 'Alex Mercer',
+      at: p.closed_at || `${p.end_date}T23:59:00.000Z`
+    });
+  });
+  setItem(KEYS.PERIOD_AUDIT, log);
+}
+
+function fiscalPeriodApi() {
+  const save = (periods, p) => writePeriods(periods.map(x => (x._id === p._id ? p : x)));
+
+  return {
+    getPeriods: () => ({ success: true, data: readPeriods().map(p => ({ ...p, ...periodStats(p) })) }),
+
+    getCurrentPeriod: () => {
+      const periods = readPeriods();
+      return findPeriodForDate(todayIso(), periods) || periods.find(p => p.status === 'OPEN') || null;
+    },
+
+    getPeriodDetail: (id) => {
+      const p = readPeriods().find(x => x._id === id || x.period_code === id);
+      if (!p) throw new Error('Fiscal period not found.');
+      return {
+        success: true,
+        data: {
+          period: { ...p, ...periodStats(p) },
+          journals: journalsIn(p).map(j => ({ _id: j._id, journal_number: j.journal_number || j.entry_number, posting_date: j.posting_date, description: j.description, total_debits: jDebit(j), total_credits: jCredit(j), status: j.status })),
+          activity: getItem(KEYS.PERIOD_AUDIT, []).filter(a => a.fiscal_period_id === p._id)
+        }
+      };
+    },
+
+    closePeriod: (periodYear, periodMonth, closeType) => {
+      const year = Number(periodYear);
+      const month = Number(periodMonth);
+      if (!year || !(month >= 1 && month <= 12)) throw new Error('Select a month and year.');
+      if (closeType !== 'soft' && closeType !== 'hard') throw new Error("Close type must be 'soft' or 'hard'.");
+      const record = ensurePeriod(year, month);
+      if (record.status === 'CLOSED') throw new Error(`Period '${formatPeriodLabel(year, month)}' is already closed.`);
+      const closed = { ...record, status: 'CLOSED', is_locked: true, close_type: closeType, closed_at: new Date().toISOString(), closed_by: currentUserLabel() };
+      save(readPeriods(), closed);
+      addActivity(closed._id, 'close', `${closeType === 'hard' ? 'Hard' : 'Soft'} closed period ${formatPeriodLabel(year, month)}`);
+      return { success: true, data: closed, message: `Successfully ${closeType === 'hard' ? 'hard' : 'soft'} closed period "${formatPeriodLabel(year, month)}"` };
+    },
+
+    reopenPeriod: (periodYear, periodMonth, reason) => {
+      const year = Number(periodYear);
+      const month = Number(periodMonth);
+      const record = readPeriods().find(p => p.period_year === year && p.period_month === month);
+      if (!record || record.status !== 'CLOSED') throw new Error(`Period '${formatPeriodLabel(year, month)}' is not closed.`);
+      if (record.close_type === 'hard') throw new Error(`Period '${formatPeriodLabel(year, month)}' was hard closed and cannot be reopened.`);
+      if (!String(reason || '').trim()) throw new Error('A reason is required to reopen a closed period.');
+      // Only the gating status flips; close_type / closed_at / closed_by stay as history until the next close.
+      const reopened = { ...record, status: 'OPEN', is_locked: false };
+      save(readPeriods(), reopened);
+      addActivity(reopened._id, 'reopen', `Reopened period ${formatPeriodLabel(year, month)}. Reason: ${String(reason).trim()}`);
+      return { success: true, data: reopened, message: `Successfully reopened period "${formatPeriodLabel(year, month)}"` };
+    }
+  };
+}
+
+// Run after the helpers above are defined (const bindings are not hoisted).
+ensureFiscalPeriodData();
+
 /**
  * Double-Entry GL Journal Creation Helper.
  * Automatically posts balanced journals and adjusts Chart of Accounts balances.
@@ -183,6 +383,7 @@ function createAndPostJournal(ruleCode, eventName, lines, description, reference
 
   const jeNumber = `JE-2026-${String(journals.length + 1).padStart(5, '0')}`;
   const now = new Date().toISOString();
+  const postingPeriod = assertPostingAllowed(now.split('T')[0]);
 
   const journalEntry = {
     _id: `je-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -191,6 +392,8 @@ function createAndPostJournal(ruleCode, eventName, lines, description, reference
     rule_code: ruleCode,
     event_type: eventName,
     posting_date: now.split('T')[0],
+    fiscal_period_id: postingPeriod._id,
+    period_code: postingPeriod.period_code,
     created_at: now,
     status: 'POSTED',
     is_balanced: true,
@@ -288,6 +491,7 @@ export const localStorageEngine = {
 
   resetDevData: () => {
     initLocalStorage(true);
+    ensureFiscalPeriodData();
     return { success: true, message: 'All demo data reset to pristine state successfully.' };
   },
 
@@ -332,7 +536,7 @@ export const localStorageEngine = {
   },
 
   getJournals: () => ({ success: true, data: getItem(KEYS.JOURNALS, []) }),
-  getPeriods: () => ({ success: true, data: getItem(KEYS.FISCAL_PERIODS, INITIAL_FISCAL_PERIODS) }),
+  ...fiscalPeriodApi(),
   getPostingRules: () => ({ success: true, data: getItem(KEYS.POSTING_RULES, INITIAL_POSTING_RULES) }),
   getExchangeRates: () => ({
     success: true,
@@ -838,8 +1042,8 @@ export const localStorageEngine = {
   getCloseOverview: () => ({
     success: true,
     data: {
-      fiscal_period: '2026-01 (Jan 2026)',
-      status: 'OPEN',
+      fiscal_period: fiscalPeriodApi().getCurrentPeriod()?.period_name || '2026-01 (Jan 2026)',
+      status: fiscalPeriodApi().getCurrentPeriod()?.status || 'OPEN',
       completed_steps: getItem(KEYS.CHECKLIST, INITIAL_CHECKLIST_STEPS).filter(c => c.status === 'COMPLETED').length,
       total_steps: 7
     }
@@ -1171,8 +1375,18 @@ export const localStorageEngine = {
         due_to_carrier: carrierPayable,
         active_invoices_count: invoices.length,
         total_payments_count: payments.length,
-        unbilled_installments_count: schedules.filter(s => s.status === 'SCHEDULED').length
+        unbilled_installments_count: schedules.filter(s => s.status === 'SCHEDULED').length,
+        gl: { current_period: (() => { const cp = fiscalPeriodApi().getCurrentPeriod(); return cp ? { period_name: cp.period_name, status: cp.status } : null; })() }
       }
     };
   }
 };
+
+// Block every engine action that posts a journal while the current period is not open,
+// before any state is written, so a rejected action leaves nothing half-saved.
+['issueInvoice', 'postPaymentReceipt', 'allocateShares', 'disburseBrokerCommission', 'disburseSettlement', 'executeSweep'].forEach(name => {
+  const original = localStorageEngine[name];
+  if (typeof original === 'function') {
+    localStorageEngine[name] = (...args) => { assertPostingAllowed(); return original(...args); };
+  }
+});

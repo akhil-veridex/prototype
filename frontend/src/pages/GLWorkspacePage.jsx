@@ -6,7 +6,6 @@ import {
   BookOpen,
   PlusCircle,
   Lock,
-  Unlock,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -21,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import ModalClose from '../components/ModalClose';
+import FiscalPeriodsPanel from './FiscalPeriodsPanel';
 
 export default function GLWorkspacePage({ section, onNavigateTab }) {
   const { currentWorkspace } = useAuth();
@@ -32,7 +32,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
   const [accounts, setAccounts] = useState([]);
   const [journals, setJournals] = useState([]);
   const [trialBalance, setTrialBalance] = useState(null);
-  const [periods, setPeriods] = useState([]);
   const [postingRules, setPostingRules] = useState([]);
   const [exchangeRates, setExchangeRates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -132,9 +131,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
       } else if (activeTab === 'trial_balance') {
         const res = await authApi.getTrialBalance();
         if (res.success) setTrialBalance(res.data);
-      } else if (activeTab === 'periods') {
-        const res = await authApi.getPeriods();
-        if (res.success) setPeriods(res.data);
       } else if (activeTab === 'rules') {
         const res = await authApi.getPostingRules();
         if (res.success) setPostingRules(res.data);
@@ -252,20 +248,6 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
       setErrorMsg(err.message);
     } finally {
       setSubmittingFx(false);
-    }
-  };
-
-  // Lock / Unlock Period
-  const handleTogglePeriodLock = async (periodId, currentStatus) => {
-    const nextStatus = (currentStatus === 'HARD_CLOSED' || currentStatus === 'LOCKED') ? 'OPEN' : 'HARD_CLOSED';
-    try {
-      const res = await authApi.updatePeriodStatus(periodId, nextStatus);
-      if (res.success) {
-        setSuccessMsg(res.message);
-        await loadData();
-      }
-    } catch (err) {
-      setErrorMsg(err.message);
     }
   };
 
@@ -701,75 +683,7 @@ export default function GLWorkspacePage({ section, onNavigateTab }) {
       )}
 
       {/* Tab: Periods */}
-      {activeTab === 'periods' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow">
-          <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-white">Fiscal Accounting Periods (Period Lock Protection)</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-850 text-slate-400 uppercase font-mono tracking-wider">
-                <tr>
-                  <th className="py-3 px-5">Period</th>
-                  <th className="py-3 px-5">Year</th>
-                  <th className="py-3 px-5">Date Range</th>
-                  <th className="py-3 px-5">Status</th>
-                  <th className="py-3 px-5 text-right">Lock Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
-                {!loading && periods.length === 0 && (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-slate-500 font-sans">
-                      No fiscal periods found for this workspace.
-                    </td>
-                  </tr>
-                )}
-                {loading ? (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-slate-500">Loading periods...</td>
-                  </tr>
-                ) : (
-                  periods.map((p) => {
-                    const isLocked = p.status === 'LOCKED' || p.status === 'HARD_CLOSED';
-                    return (
-                      <tr key={p._id} className="hover:bg-slate-850/50 transition">
-                        <td className="py-3.5 px-5 font-mono font-bold text-white">{p.period_name}</td>
-                        <td className="py-3.5 px-5 font-mono text-slate-400">{p.fiscal_year}</td>
-                        <td className="py-3.5 px-5 font-mono text-slate-400 text-[11px]">
-                          {new Date(p.start_date).toISOString().slice(0, 10)} to {new Date(p.end_date).toISOString().slice(0, 10)}
-                        </td>
-                        <td className="py-3.5 px-5">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${isLocked
-                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              }`}
-                          >
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-5 text-right">
-                          <button
-                            onClick={() => handleTogglePeriodLock(p._id, p.status)}
-                            className={`py-1.5 px-3 rounded-md text-[11px] font-semibold flex items-center space-x-1.5 ml-auto whitespace-nowrap border transition ${isLocked
-                                ? 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
-                                : 'bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border-rose-200 hover:border-rose-300'
-                              }`}
-                          >
-                            {isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                            <span>{isLocked ? 'Re-open Period' : 'Hard Close Period'}</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeTab === 'periods' && <FiscalPeriodsPanel />}
 
       {/* Tab: Posting Rules */}
       {activeTab === 'rules' && (

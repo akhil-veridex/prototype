@@ -957,12 +957,42 @@ export const INITIAL_FINANCE_AGREEMENTS = [
   }
 ];
 
-export const INITIAL_FISCAL_PERIODS = [
-  { _id: 'fp-2026-01', period_name: '2026-01 (Jan 2026)', fiscal_year: '2026', start_date: '2026-01-01', end_date: '2026-01-31', status: 'OPEN', is_locked: false },
-  { _id: 'fp-2026-02', period_name: '2026-02 (Feb 2026)', fiscal_year: '2026', start_date: '2026-02-01', end_date: '2026-02-28', status: 'OPEN', is_locked: false },
-  { _id: 'fp-2026-03', period_name: '2026-03 (Mar 2026)', fiscal_year: '2026', start_date: '2026-03-01', end_date: '2026-03-31', status: 'OPEN', is_locked: false },
-  { _id: 'fp-2026-04', period_name: '2026-04 (Apr 2026)', fiscal_year: '2026', start_date: '2026-04-01', end_date: '2026-04-30', status: 'OPEN', is_locked: false }
-];
+const MONTH_FULL_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * One monthly accounting period, shaped like Southlake's period_closures row:
+ * period_year, period_month, status open|closed, close_type soft|hard, closed_at, closed_by.
+ */
+export function buildFiscalPeriod(year, monthIndex, status = 'OPEN', extra = {}) {
+  const mm = String(monthIndex + 1).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const code = `${year}-${mm}`;
+  return {
+    _id: `fp-${code}`,
+    fiscal_period_id: `fp-${code}`,
+    period_year: year,
+    period_month: monthIndex + 1,
+    period_code: code,
+    period_name: `${MONTH_FULL_NAMES[monthIndex]} ${year}`,
+    fiscal_year: String(year),
+    start_date: `${code}-01`,
+    end_date: `${code}-${String(lastDay).padStart(2, '0')}`,
+    status,
+    close_type: null,
+    closed_at: null,
+    closed_by: null,
+    is_locked: status === 'CLOSED',
+    ...extra
+  };
+}
+
+// 2026 and 2027, monthly. January 2026 is soft closed (it holds the seeded journals).
+export const INITIAL_FISCAL_PERIODS = [2026, 2027].flatMap(year =>
+  Array.from({ length: 12 }, (_, m) =>
+    year === 2026 && m === 0
+      ? buildFiscalPeriod(year, m, 'CLOSED', { close_type: 'soft', closed_at: '2026-02-01T09:00:00.000Z', closed_by: 'Alex Mercer' })
+      : buildFiscalPeriod(year, m, 'OPEN'))
+);
 
 export const INITIAL_POSTING_RULES = [
   {

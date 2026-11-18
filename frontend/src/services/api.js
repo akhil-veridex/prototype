@@ -94,18 +94,10 @@ export const authApi = {
     await delay();
     return localStorageEngine.getPeriods();
   },
-  createPeriod: async (payload) => ({ success: true, data: payload }),
-  updatePeriodStatus: async (period_id, status, close_notes) => {
-    await delay();
-    const periods = localStorageEngine.getPeriods().data;
-    const p = periods.find(x => x._id === period_id);
-    if (p) {
-      p.status = status;
-      p.is_locked = status === 'HARD_LOCK';
-      localStorage.setItem('veridex_fiscal_periods', JSON.stringify(periods));
-    }
-    return { success: true, data: p };
-  },
+  getCurrentPeriod: async () => { await delay(); return { success: true, data: localStorageEngine.getCurrentPeriod() }; },
+  getPeriodDetail: async (id) => { await delay(); return localStorageEngine.getPeriodDetail(id); },
+  closePeriod: async (periodYear, periodMonth, closeType) => { await delay(); return localStorageEngine.closePeriod(periodYear, periodMonth, closeType); },
+  reopenPeriod: async (periodYear, periodMonth, reason) => { await delay(); return localStorageEngine.reopenPeriod(periodYear, periodMonth, reason); },
   getJournals: async () => {
     await delay();
     return localStorageEngine.getJournals();
